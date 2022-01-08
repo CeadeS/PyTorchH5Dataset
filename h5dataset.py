@@ -548,12 +548,15 @@ class H5Dataset(Dataset):
             metadata = H5Dataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func)
             metadata.to_csv(metadata_file_path)
             print("Finished creating meta data file.")
+        else:
+            metadata = pd.read_csv(metadata_file_path)
+            print("Meta data file found. Proceeding")
 
-            if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
-                print('Converting raw data files to h5.')
-                H5Dataset.convert_images_to_dataset(dataset_dataframe=metadata,
-                                                    dataset_destination_h5_file=dataset_h5_file_path,
-                                                    sub_batch_size=dataset_sub_batch_size)
+        if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
+            print('Converting raw data files to h5.')
+            H5Dataset.convert_images_to_dataset(dataset_dataframe=metadata,
+                                                dataset_destination_h5_file=dataset_h5_file_path,
+                                                sub_batch_size=dataset_sub_batch_size)
             print('Finished converting Files')
 
     def __init__(self,
