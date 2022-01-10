@@ -7,6 +7,7 @@ import imghdr
 import sndhdr
 import os
 import pandas as pd
+from math import ceil
 
 
 class H5Dataset(Dataset):
@@ -29,14 +30,20 @@ class H5Dataset(Dataset):
         from PIL import Image
         from skimage import io as skio
         import io
-        key = 'path' if 'path' in sample.keys() else 'FilePath'
-        file_type = sample['type']
+
+        path_key = 'path' if 'path' in sample.keys() else 'FilePath'
+        type_key = 'type' if 'type' in sample.keys() else 'FileType'
+        try:
+            file_type = sample[type_key]
+        except KeyError:
+            file_type = imghdr.what(sample[path_key])
+
         if file_type in ['tif', 'tiff']:
-            im = skio.imread(sample[key])
+            im = skio.imread(sample[path_key])
             im = np.moveaxis(np.array(im), -1, 0)
             return im
         else:
-            with open(sample[key], 'rb') as f:
+            with open(sample[path_key ], 'rb') as f:
                 im = Image.open(io.BytesIO(f.read()))
                 if len(im.getbands()) < 3:
                     rgbimg = Image.new("RGB", im.size)
@@ -67,7 +74,7 @@ class H5Dataset(Dataset):
 
     @staticmethod
     def batchify_sorted_sample_data_list(sample_data_list, batch_size=50):
-        for start_idx in range(0, len(sample_data_list), batch_size):
+        for start_idx in range(0, ceil(len(sample_data_list)/batch_size), batch_size):
             batch_list = sample_data_list[start_idx:start_idx + batch_size]
             classes, shapes, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
             batch_array = H5Dataset.stack_batch_data_padded(batch_list)
@@ -77,22 +84,21 @@ class H5Dataset(Dataset):
 
     @staticmethod
     def get_central_crop_args(batch_width, batch_height, crop_area_ratio_range):
-        in_ratio = float(batch_width) / float(batch_height)
-        if in_ratio < min(crop_area_ratio_range):
-            w = batch_width
-            h = int(round(w / min(crop_area_ratio_range)))
-        elif in_ratio > max(crop_area_ratio_range):
-            h = batch_height
-            w = int(round(h * max(crop_area_ratio_range)))
-        else:  # whole image
-            w = batch_width
-            h = batch_height
+        random_ratio = torch.empty(1).uniform_(*crop_area_ratio_range).item()
+        if 0 < random_ratio <= 1 :
+            h = int(sqrt(random_ratio) * batch_height)
+            w = int(sqrt(random_ratio) * batch_width)
+        elif random_ratio > 1.0:
+            h = batch_width
+            w = batch_height
+        else:
+            raise ValueError("Ratio must be in (0,1]")
         h_begin = (batch_height - h) // 2
         w_begin = (batch_width - w) // 2
         return h_begin, w_begin, h_begin + h, w_begin + w
 
     @staticmethod
-    def get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range,
+    def get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio_range_range, crop_area_ratio_range,
                                                                  batch_height, batch_width):
         """
         Stolen from https://github.com/pytorch/vision/blob/d367a01a18a3ae6bee13d8be3b63fd6a581ea46f/torchvision/transforms/transforms.py
@@ -102,18 +108,21 @@ class H5Dataset(Dataset):
         :param batch_width:
         :return:
         """
-        log_ratio = torch.log(torch.tensor(crop_size_aspect_ratio))
+        log_ratio = torch.log(torch.tensor(crop_size_aspect_ratio_range_range))
         for _ in range(10):
             random_number = torch.empty(1).uniform_(*crop_area_ratio_range).item()
             target_area = batch_height * batch_width * random_number
             aspect_ratio = torch.exp(torch.empty(1).uniform_(*log_ratio)).item()
             crop_height = int(round(sqrt(target_area / aspect_ratio)))
             crop_width = int(round(sqrt(target_area * aspect_ratio)))
+
+
             if 0 < crop_width <= batch_width and 0 < crop_height <= batch_height:
                 h_begin = torch.randint(0, batch_height - crop_height + 1, size=(1,)).item()
                 w_begin = torch.randint(0, batch_width - crop_width + 1, size=(1,)).item()
                 return h_begin, w_begin, h_begin + crop_height, w_begin + crop_width
         # Fallback to central crop
+
         return H5Dataset.get_central_crop_args(batch_width, batch_height, crop_area_ratio_range)
 
     @staticmethod

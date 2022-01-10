@@ -33,10 +33,10 @@ batch_size = 100
 epochs=100
 device = 'cuda:0'
 dataset = H5Dataset(dataset_name="my_dataset",
-dataset_root='/abs/path/to/ds',
-transforms=Resize((244,244)),
-loading_crop_size=(0.73, 1.33), # cropped aspect ratio 
-loading_crop_area_ratio_range=244 * 244) #number of cropped px read more at definition of random_located_sized_crop_function
+    dataset_root='/abs/path/to/ds',
+    transforms=Resize((244,244)),
+    loading_crop_size=(0.73, 1.33), # cropped aspect ratio 
+    loading_crop_area_ratio_range=244 * 244) #number of cropped px read more at definition of random_located_sized_crop_function
 dataloader = DataLoader(dataset,batch_size=4*batch_size, num_workers=0)
 
 model = nn.Linear(3*244*244,1000).to(device)
