@@ -172,10 +172,10 @@ class TestH5Dataset(TestCase):
 
         area_ratio = (res_height * res_width) / (batch_height * batch_width)
 
-        self.assertGreaterEqual(crop_area_ratio_range[1], round(area_ratio,2))
-        self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,2))
+        self.assertGreaterEqual(crop_area_ratio_range[0], round(area_ratio,2))
+        self.assertLessEqual(crop_area_ratio_range[1], round(area_ratio,2))
 
-        crop_size_aspect_ratio = (0.1, 0.7)
+        crop_size_aspect_ratio = (0.3, 0.7)
         crop_area_ratio_range = (0.5, 0.5)
         batch_height = 217
         batch_width = 244
@@ -188,8 +188,8 @@ class TestH5Dataset(TestCase):
 
         area_ratio = (res_height * res_width) / (batch_height * batch_width)
 
-        self.assertGreaterEqual(crop_area_ratio_range[1], round(area_ratio,1))
-        self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,1))
+        self.assertGreaterEqual(crop_area_ratio_range[0], round(area_ratio,1))
+        self.assertLessEqual(crop_area_ratio_range[1], round(area_ratio,1))
 
 
         crop_size_aspect_ratio = (0.1, 0.7)
@@ -356,3 +356,178 @@ class TestH5Dataset(TestCase):
 
         self.assertGreaterEqual(crop_area_ratio_range[1], round(area_ratio,1))
         self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,1))
+
+    def test_random_located_sized_crop(self):
+        import numpy as np
+        ## crop size given as ints
+        h5_group_dummy = np.random.rand(50,5,144,244)
+        batch_height, batch_width = 144, 244
+        batch_area =batch_height * batch_width
+        crop_size = (None, 300)
+        crop_area_ratio_range = 0.7
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_area=np.prod(crop_shape)
+        self.assertEqual(round(crop_area_ratio_range,1), round(crop_area/batch_area,1))
+
+        h5_group_dummy = np.random.rand(50,5,144,244)
+        batch_height, batch_width = 144, 244
+        batch_area =batch_height * batch_width
+        crop_size = (120, None)
+        crop_area_ratio_range = 0.9
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_area=np.prod(crop_shape)
+        self.assertEqual(round(crop_area_ratio_range,1), round(crop_area/batch_area,1))
+
+        h5_group_dummy = np.random.rand(50,5,144,244)
+        batch_height, batch_width = 144, 244
+        batch_area =batch_height * batch_width
+        crop_size = (250, None)
+        crop_area_ratio_range = 0.66
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_area=np.prod(crop_shape)
+        self.assertEqual(round(crop_area_ratio_range,1), round(crop_area/batch_area,1))
+
+        h5_group_dummy = np.random.rand(50,5,144,244)
+        batch_height, batch_width = 144, 244
+        crop_size = (250, 250)
+        crop_area_ratio_range = 0.8
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+
+        self.assertTrue(all(a==b for a,b in zip(crop_shape,(batch_height, batch_width))))
+
+        h5_group_dummy = np.random.rand(50,5,144,244)
+        batch_height, batch_width = 144, 244
+        crop_size = (110, 120)
+        crop_area_ratio_range = 0.8
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        self.assertTrue(all(a==b for a,b in zip(crop_shape,crop_size)))
+
+        ## crop size is given as float
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        batch_area = batch_height * batch_width
+        crop_size = (0.7)
+        crop_area_ratio_range = 0.2
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_ratio = crop_shape[1]/crop_shape[0]
+        crop_area = np.prod(crop_shape)
+        self.assertEqual(round(crop_ratio, 1), round(crop_size ,1))
+        self.assertEqual(round(crop_area/batch_area,1), crop_area_ratio_range)
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        batch_area = batch_height * batch_width
+        crop_size = (1.3)
+        crop_area_ratio_range = 0.6
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_ratio = crop_shape[1]/crop_shape[0]
+        crop_area = np.prod(crop_shape)
+        self.assertEqual(round(crop_ratio, 1), round(crop_size ,1))
+        self.assertEqual(round(crop_area/batch_area,1), crop_area_ratio_range)
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        batch_area = batch_height * batch_width
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (0.6, 0.7)
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_ratio = crop_shape[1]/crop_shape[0]
+        crop_area = np.prod(crop_shape)
+        self.assertGreaterEqual(round(crop_ratio, 1), round(crop_size[0] ,1))
+        self.assertLessEqual(round(crop_ratio, 1), round(crop_size[1] ,1))
+        self.assertGreaterEqual(round(crop_area/batch_area,1), crop_area_ratio_range[0])
+        self.assertLessEqual(round(crop_area/batch_area,1), crop_area_ratio_range[1])
+
+        ## crop_area is given as number of pixels
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = 150*200
+        crop = H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+        crop_shape = crop.shape[-2:]
+        crop_ratio = crop_shape[1]/crop_shape[0]
+        crop_area = np.prod(crop_shape)
+        self.assertGreaterEqual(round(crop_ratio, 1), round(crop_size[0] ,1))
+        self.assertLessEqual(round(crop_ratio, 1), round(crop_size[1] ,1))
+        self.assertAlmostEqual(crop_area, crop_area_ratio_range, delta=int(crop_area*.05))
+
+        #Fail Cases TODO
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (0.6, 1.7)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (0.6, 1.7)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+    def test_center_crop(self):
+        import numpy as np
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_height, crop_width = (150, 180)
+        crop = H5Dataset.center_crop(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
+        cropped_height, cropped_width = crop.shape[-2:]
+
+        self.assertEqual((cropped_height, cropped_width), (crop_height, crop_width))
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_height, crop_width = (240, 180)
+        crop = H5Dataset.center_crop(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
+        cropped_height, cropped_width = crop.shape[-2:]
+        self.assertEqual((cropped_height, cropped_width), (batch_height, crop_width))
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_height, crop_width = (180, 250)
+        crop = H5Dataset.center_crop(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
+        cropped_height, cropped_width = crop.shape[-2:]
+        self.assertEqual((cropped_height, cropped_width), (crop_height, batch_width))
+
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_height, crop_width = (240, 250)
+        crop = H5Dataset.center_crop(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
+        cropped_height, cropped_width = crop.shape[-2:]
+        self.assertEqual((cropped_height, cropped_width), (batch_height, batch_width))
+
+
+    def test_center_crop_as_tensor(self):
+        import numpy as np
+        import torch
+        h5_group_dummy = np.random.rand(50,5,200,244)
+        batch_height, batch_width = 200, 244
+        crop_height, crop_width = (150, 180)
+        crop = H5Dataset.center_crop_as_tensor(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
+        self.assertIsInstance(crop, torch.Tensor)
+
+    def test_crop_original_image_from_batch(self):
+        import numpy as np
+        batch = np.random.rand(3,5,200,244)
+        shapes = ((50,144),(177,34),(190,234))
+        crops = H5Dataset.crop_original_image_from_batch(batch, shapes)
+        crop_shapes = tuple(crop.shape[-2:] for crop in crops)
+        self.assertEqual(crop_shapes, shapes)
+
+        batch = np.random.rand(3,5,200,244)
+        shapes = ((50,144),(177,34),(190,1000))
+        crops = H5Dataset.crop_original_image_from_batch(batch, shapes)
+        crop_shapes = tuple(crop.shape[-2:] for crop in crops)
+        right_shapes = ((50,144),(177,34),(190,244))
+        self.assertEqual(crop_shapes, right_shapes)

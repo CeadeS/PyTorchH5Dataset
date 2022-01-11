@@ -179,8 +179,8 @@ class H5Dataset(Dataset):
     def random_located_sized_crop(h5_group,
                                   batch_height,
                                   batch_width,
-                                  crop_size=(400,),
-                                  crop_area_ratio_range=(.8,)):
+                                  crop_size=(400,None),
+                                  crop_area_ratio_range=(.8,.9)):
 
         """
         Function crops a sub batch i.e a h5_group.
@@ -273,7 +273,7 @@ class H5Dataset(Dataset):
                    crop_area_ratio_range) <= 2, "Crop area ratio must be a int or float value or a tuple of length shorter then 3."
 
         if isinstance(crop_area_ratio_range, tuple):
-            assert all((isinstance(a, float) and 0. < a <= 2. for a in crop_area_ratio_range))
+            assert all((isinstance(a, float) and 0. < a <= 1. for a in crop_area_ratio_range))
             if len(crop_area_ratio_range) == 2:
                 assert crop_area_ratio_range[0] <= crop_area_ratio_range[1], \
                     f"Upper bound (first value) of crop_area_ratio_range {crop_area_ratio_range[0]} must me smaller " \
@@ -289,14 +289,12 @@ class H5Dataset(Dataset):
                 crop_size = (crop_size[0], crop_size[0])
             elif None in crop_size:
                 assert (crop_size[0] is not None or crop_size[1] is not None), "None is only allowed once in crop_size"
-                if crop_size[0] is None:
-                    crop_size = (crop_size[1], crop_size[1])
-                else:
-                    crop_size = (crop_size[0], crop_size[0])
-            elif len(crop_size) == 2:
+            elif len(crop_size) == 2 and all((isinstance(a, float) for a in crop_size)):
                 assert crop_size[0] <= crop_size[1], f"Lower bound of crop_size (first value) {crop_size[0]} must be" \
                                                      f"lower then the upper bound (second value) {crop_size[1]}."
                 assert (all((a > 0 for a in crop_size))), "Negative Values are not allowed"
+            elif all((isinstance(a, int) for a in crop_size)):
+                pass
             else:
                 raise ValueError(f"Something unexpected happened to the crop_size parameter {crop_size}")
 
@@ -308,20 +306,20 @@ class H5Dataset(Dataset):
         if all(isinstance(a, int) for a in crop_size) and len(crop_size) == 2:
             # both sides are fixed
             crop_height, crop_width = crop_size
-
             def crop_func(h5_group, batch_height, batch_width):
                 # Issue with uint16 dtype when loading shape from dataset
                 if isinstance(batch_width, np.uint16):
                     batch_height, batch_width = int(batch_height), int(batch_width)
-                h_offset = int((batch_height - crop_height) * torch.rand(1).item())
-                w_offset = int((batch_width - crop_width) * torch.rand(1).item())
-                w_end = w_offset + crop_width
-                h_end = h_offset + crop_height
+                h_offset =  max((0,int((batch_height - crop_height) * torch.rand(1).item())))
+                w_offset = max(0,int((batch_width - crop_width) * torch.rand(1).item()))
+                w_end = min((batch_width, w_offset + crop_width))
+                h_end = min((batch_height, h_offset + crop_height))
                 return h5_group[..., h_offset:h_end, w_offset:w_end]
 
             return crop_func
 
-        if isinstance(crop_area_ratio_range, float):
+        if isinstance(crop_area_ratio_range, float) or (not isinstance(crop_area_ratio_range, int) and
+                                                        all(isinstance(a, float) for a in crop_area_ratio_range)):
             # one crop size is unknown and a crop area ratio is given
             if any(isinstance(a, int) for a in crop_size):
                 # one side is fixed
@@ -331,7 +329,6 @@ class H5Dataset(Dataset):
                         crop_area_ratio_range = crop_area_ratio_range[0], crop_area_ratio_range[0]
                 else:
                     crop_area_ratio_range = (crop_area_ratio_range, crop_area_ratio_range)
-
                 def crop_func(h5_group, batch_height, batch_width):
                     # Issue with uint16 dtype when loading shape from dataset
                     if isinstance(batch_width, np.uint16):
@@ -380,11 +377,11 @@ class H5Dataset(Dataset):
             raise NotImplementedError
 
     @staticmethod
-    def center_crop(h5_group, batch_width, batch_height, crop_width, crop_height):
+    def center_crop(h5_group, batch_height, batch_width, crop_height, crop_width):
         beg_idx_1 = max(0, (batch_height - crop_height) // 2)
         end_idx_1 = beg_idx_1 + crop_height
         beg_idx_2 = max(0, (batch_width - crop_width) // 2)
-        end_idx_2 = beg_idx_1 + crop_width
+        end_idx_2 = beg_idx_2 + crop_width
         return h5_group[..., beg_idx_1:end_idx_1, beg_idx_2:end_idx_2]
 
     @staticmethod
@@ -397,10 +394,10 @@ class H5Dataset(Dataset):
         batch_shape = batch[0].shape
         imlist = []
         for idx, sample_shape in enumerate(shapes):
-            beg_idx_1 = (batch_shape[1] - sample_shape[1]) // 2
-            end_idx_1 = beg_idx_1 + sample_shape[1]
-            beg_idx_2 = (batch_shape[2] - sample_shape[2]) // 2
-            end_idx_2 = beg_idx_2 + sample_shape[2]
+            beg_idx_1 = (batch_shape[-2] - sample_shape[-2]) // 2
+            end_idx_1 = beg_idx_1 + sample_shape[-2]
+            beg_idx_2 = (batch_shape[-1] - sample_shape[-1]) // 2
+            end_idx_2 = beg_idx_2 + sample_shape[-1]
             imlist.append(batch[idx, :, beg_idx_1:end_idx_1, beg_idx_2:end_idx_2])
         return imlist
 
