@@ -410,8 +410,9 @@ class H5Dataset(Dataset):
                                   dataset_destination_h5_file='D:/Datasets/benchmarking/h5/bikini_dataset.h5',
                                   sub_batch_size=50):
         """
-        Recursively parse dataset_images_root_folder and add all images to a h5 dataset file
-        Writes dataset to dataset_destination_h5_file
+        Read all samples from the FilePath read from each row of a pandas dataframe and add them to a h5 dataset file.
+        Samples will be padded to equal height and width, batched, compressed and saved to the H5File in batches of
+        length sub_batch_size.
 
         :param dataset_images_root_folder:
         :param dataset_dataframe: pandas dataframe with columns named: Index, FilePath, ClassNo...
@@ -459,6 +460,12 @@ class H5Dataset(Dataset):
 
     @staticmethod
     def create_metadata_for_dataset(raw_files_dir, filename_to_metadata_func=None):
+        """
+
+        :param raw_files_dir:
+        :param filename_to_metadata_func:
+        :return:
+        """
         assert os.path.exists(raw_files_dir), f"Directory {raw_files_dir} not found"
         datalist = []
         classes = sorted(os.listdir(raw_files_dir))
@@ -514,6 +521,11 @@ class H5Dataset(Dataset):
         return sample, meta_data
 
     def get_meta_data_from_indices(self, indices):
+        """
+
+        :param indices:
+        :return:
+        """
         return self.metadata[self.metadata['Index'].isin(indices)]
 
     def initiate_crop_function(self, loading_crop_size=(0.73, 1.33), loading_crop_area_ratio_range=244 * 244):
@@ -536,6 +548,16 @@ class H5Dataset(Dataset):
             filename_to_metadata_func=lambda s: (zip(('name', 'type'), s.split('.'))),
             overwrite_existing=False
     ):
+        """
+
+        :param dataset_name:
+        :param dataset_source_root_files_dir:
+        :param dataset_dest_root_dir:
+        :param dataset_sub_batch_size:
+        :param filename_to_metadata_func:
+        :param overwrite_existing:
+        :return:
+        """
 
         assert os.path.exists(dataset_source_root_files_dir), "Raw data root directory not found."
 
@@ -572,6 +594,14 @@ class H5Dataset(Dataset):
                  loading_crop_area_ratio_range=244 * 244,
                  transforms=None
                  ):
+        """
+        
+        :param dataset_name:
+        :param dataset_root:
+        :param loading_crop_size:
+        :param loading_crop_area_ratio_range:
+        :param transforms:
+        """
         dataset_h5_file_path = os.path.join(dataset_root, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_root, dataset_name + '.csv')
 
