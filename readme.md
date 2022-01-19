@@ -4,6 +4,27 @@ The dataset uses compressed h5 to accelerate data loading.
 Create a Dataset from an image directory: Every class is put into a subdir. The directories in the class dirs will be crawled recursively.
 Further meta-data can be provided by the file name or using an existing pandas dataframe stored as csv file. The dataframe must contain the columns FilePath, Index, ClassNo and FileType. 
 
+# How does it work?
+
+The data is stored in stacks of equal shape. Channels
+must match but width and height is zero padded. The stacks
+are generated in increasing width order. Lossless blosc 
+compression nihilates padded zeros. Data is loaded
+in predefined crops minimizing IO and data transfer.
+Various cropping techniques are provided, random, center
+resized. All data points are cropped in the same way.
+Loading in original shape is supported but slower.
+
+Since the order of images in a loaded batch is fixed,
+several random batches are loaded and shuffled. Please look
+at the example below.
+
+Classical color jpg/png and multi channel tif files 
+are crawled and stored in the dataset while meta 
+data is stored into a pandas data frame. Metadata 
+can be provided provided by a data frame or the 
+file name.
+
 # Installation
 
 ```bash
