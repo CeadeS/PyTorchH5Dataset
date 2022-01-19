@@ -10,7 +10,7 @@ The data is stored in stacks of equal shape. Channels
 must match but width and height is zero padded. The stacks
 are generated in increasing width order. Lossless blosc 
 compression nihilates padded zeros. Data is loaded
-in predefined crops minimizing IO and data transfer.
+in random or fixed crops minimizing IO and data transfer.
 Various cropping techniques are provided, random, center
 resized. All data points are cropped in the same way.
 Loading in original shape is supported but slower.
