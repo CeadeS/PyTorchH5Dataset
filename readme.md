@@ -1,10 +1,10 @@
-#This is a Dataset module for PyTorch 
+# This is a Dataset module for PyTorch 
 The dataset uses compressed h5 to accelerate data loading.
 
 Create a Dataset from an image directory: Every class is put into a subdir. The directories in the class dirs will be crawled recursively.
 Further meta-data can be provided by the file name or using an existing pandas dataframe stored as csv file. The dataframe must contain the columns FilePath, Index, ClassNo and FileType. 
 
-#Installation
+# Installation
 
 ```bash
 git clone https://github.com/CeadeS/PyTorchH5Dataset.git
