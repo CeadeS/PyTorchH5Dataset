@@ -24,7 +24,7 @@ d = h5dataset.H5Dataset.create_dataset(
     overwrite_existing = False)
 ```
 
-#Example Usage
+# Example Usage
 ```python
 from torchvision.transforms import Resize
 from torch.utils.data import DataLoader
