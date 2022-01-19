@@ -531,3 +531,13 @@ class TestH5Dataset(TestCase):
         crop_shapes = tuple(crop.shape[-2:] for crop in crops)
         right_shapes = ((50,144),(177,34),(190,244))
         self.assertEqual(crop_shapes, right_shapes)
+
+    def test_convert_images_to_dataset(self):
+        import pandas as pd
+        import shutil as sh
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dastaset.h5')
+
+        sh.rmtree('./test/data/tmp')
+
+

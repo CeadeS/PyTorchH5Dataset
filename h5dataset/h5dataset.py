@@ -409,15 +409,15 @@ class H5Dataset(Dataset):
     def convert_images_to_dataset(dataset_dataframe,
                                   dataset_destination_h5_file='D:/Datasets/benchmarking/h5/bikini_dataset.h5',
                                   sub_batch_size=50):
+        from pathlib import Path
         """
         Read all samples from the FilePath read from each row of a pandas dataframe and add them to a h5 dataset file.
         Samples will be padded to equal height and width, batched, compressed and saved to the H5File in batches of
         length sub_batch_size.
 
-        :param dataset_images_root_folder:
-        :param dataset_dataframe: pandas dataframe with columns named: Index, FilePath, ClassNo...
+        :param dataset_dataframe: pandas dataframe with columns named: Index, FilePath, ClassNo, FileType...
         :param dataset_destination_h5_file: string filepath
-        :param sub_batch_size: int size of sliced stored together in one group
+        :param sub_batch_size: int number of padded images stored together in one group
         :return: None
         """
         sample_data_list = []
@@ -442,6 +442,10 @@ class H5Dataset(Dataset):
             }
             sample_data_list.append(sample)
         sample_data_list = sorted(sample_data_list, key=lambda x: x['size'], reverse=False)
+
+        directory = Path(dataset_destination_h5_file).parent
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
         with h5py.File(dataset_destination_h5_file, "w") as h5_file:
             idx = 0
@@ -595,7 +599,7 @@ class H5Dataset(Dataset):
                  transforms=None
                  ):
         """
-        
+
         :param dataset_name:
         :param dataset_root:
         :param loading_crop_size:
