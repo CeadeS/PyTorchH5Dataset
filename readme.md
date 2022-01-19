@@ -22,8 +22,7 @@ at the example below.
 Classical color jpg/png and multi channel tif files 
 are crawled and stored in the dataset while meta 
 data is stored into a pandas data frame. Metadata 
-can be provided provided by a data frame or the 
-file name.
+can be provided by a data frame or the file name.
 
 # Installation
 
