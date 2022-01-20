@@ -25,8 +25,14 @@ data is stored into a pandas data frame. Metadata
 can be provided by a data frame or the file name.
 
 # Installation
-
+pip install
 ```bash
+pip install pytorch-h5dataset==0.1.0
+```
+
+dev intall
+```bash
+
 git clone https://github.com/CeadeS/PyTorchH5Dataset.git
 pip install -e .
 ```
