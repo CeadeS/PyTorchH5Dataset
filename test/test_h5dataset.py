@@ -1,9 +1,14 @@
 from unittest import TestCase
 
-from h5dataset import H5Dataset
+from pytorch_h5dataset import H5Dataset
+
+import os
+import pathlib
+if  pathlib.Path(os.getcwd()).name == 'test':
+    os.chdir('../')
 
 andromeda_sample = {
-    'path': './test/data/images/andromeda.png',
+    'path': './test/data/images/rgb/a/andromeda_0.png',
     'index': 1,
     'class': 0,
     'type': 'jpg',
@@ -13,8 +18,19 @@ andromeda_sample = {
     'shape': (3, 3694, 6652)
 }
 
+pollen_sample = {
+    'path': './test/data/images/multichannel/a/pollen_0.tif',
+    'index': 1,
+    'class': 0,
+    'type': 'tif',
+    'height': 188,
+    'width': 85,
+    'size': 188 * 85,
+    'shape': (24, 188, 85)
+}
+
 pano_sample = {
-    'path': './test/data/images/pano.jpg',
+    'path': './test/data/images/rgb/b/pano_1.jpg',
     'index': 1,
     'class': 1,
     'type': 'jpg',
@@ -25,9 +41,9 @@ pano_sample = {
 }
 
 something_sample = {
-    'path': './test/data/images/something.tif',
+    'path': './test/data/images/multichannel/b/something_1.tif',
     'index': 1,
-    'class': 0,
+    'class': 1,
     'type': 'tif',
     'height': 22,
     'width': 24,
@@ -35,16 +51,7 @@ something_sample = {
     'shape': (24, 22, 24)
 }
 
-pollen_sample = {
-    'path': './test/data/images/pollen.tif',
-    'index': 1,
-    'class': 1,
-    'type': 'tif',
-    'height': 188,
-    'width': 85,
-    'size': 188 * 85,
-    'shape': (24, 188, 85)
-}
+
 
 
 class TestH5Dataset(TestCase):
@@ -52,20 +59,20 @@ class TestH5Dataset(TestCase):
         # jpg/png
 
         sample = {
-            'FilePath': './test/data/images/andromeda.png',
+            'FilePath': andromeda_sample['path'],
         }
         image = H5Dataset.load_image_sample(sample)
         self.assertEqual(image.shape, andromeda_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
-            'FilePath': './test/data/images/andromeda.png',
+            'FilePath': andromeda_sample['path'],
             'FileType': 'png'
         }
         image = H5Dataset.load_image_sample(sample)
         self.assertEqual(image.shape, andromeda_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
-            'FilePath': './test/data/images/pano.jpg',
+            'FilePath': pano_sample['path'],
             'FileType': 'jpg'
         }
         image = H5Dataset.load_image_sample(sample)
@@ -73,20 +80,20 @@ class TestH5Dataset(TestCase):
 
         # tif
         sample = {
-            'FilePath': './test/data/images/something.tif',
+            'FilePath': something_sample['path'],
             'FileType': 'tif'
         }
         image = H5Dataset.load_image_sample(sample)
         self.assertEqual(image.shape, something_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
-            'FilePath': './test/data/images/something.tif',
+            'FilePath': something_sample['path'],
         }
         image = H5Dataset.load_image_sample(sample)
         self.assertEqual(image.shape, something_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
-            'FilePath': './test/data/images/pollen.tif',
+            'FilePath': pollen_sample['path'],
         }
 
         image = H5Dataset.load_image_sample(sample)
@@ -539,5 +546,32 @@ class TestH5Dataset(TestCase):
         H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dastaset.h5')
 
         sh.rmtree('./test/data/tmp')
+
+    def test_create_metadata_for_dataset(self):
+
+        dataframe = H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/')
+        self.assertEqual(len(dataframe),2)
+        self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType']))
+
+        dataframe = H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/', lambda a : dict(zip(['Filename','class'], a[:-4].split('_'))))
+        self.assertEqual(len(dataframe),2)
+        self.assertEqual(dataframe.loc[1]['ClassNo'],1)
+        self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
+
+
+        dataframe = H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/', lambda a : dict(zip(['Filename','class'], a[:-4].split('_'))), True)
+        self.assertEqual(dataframe.loc[1]['ClassNo'],0)
+        self.assertEqual(len(dataframe),2)
+        self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
+
+
+        dataframe = H5Dataset.create_metadata_for_dataset('./test/data/images/', lambda a : dict(zip(['Filename','class'], a[:-4].split('_'))), True)
+        self.assertEqual(dataframe.loc[1]['ClassNo'],0)
+        self.assertEqual(len(dataframe),4)
+        self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
+
+        dataframe = H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/a/', lambda a : dict(zip(['Filename','class'], a[:-4].split('_'))), True)
+        self.assertEqual(dataframe.loc[0]['ClassNo'],0)
+        self.assertEqual(len(dataframe),1)
 
 
