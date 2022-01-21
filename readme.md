@@ -28,7 +28,7 @@ can be provided by a data frame or the file name.
 # Installation
 pip install
 ```bash
-pip install pytorch-h5dataset==0.1.0
+pip install pytorch-h5dataset==0.2.0
 ```
 
 dev intall
