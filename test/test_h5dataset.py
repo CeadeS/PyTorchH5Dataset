@@ -200,7 +200,7 @@ class TestH5Dataset(TestCase):
 
 
         crop_size_aspect_ratio = (0.1, 0.7)
-        crop_area_ratio_range = (0.1, 0.8)
+        crop_area_ratio_range = (0.2, 0.7)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = H5Dataset.get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
