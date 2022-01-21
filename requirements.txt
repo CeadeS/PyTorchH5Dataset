@@ -6,3 +6,4 @@ tables~=3.6.1
 pandas
 Pillow
 torchvision
+scikit-image
