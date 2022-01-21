@@ -621,6 +621,22 @@ class TestH5Dataset(TestCase):
         pd.testing.assert_frame_equal(test_meta, gt_meta)
         del dataset
 
+    def test_get_meta_data_from_indices(self):
+        import pandas as pd
+        import shutil as sh
+        import numpy as np
+        dataframe = pd.read_csv('./test/data/test_dataset_multichannel.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset_multichannel.csv','./test/data/tmp/dataset/h5/test_dataset_multichannel.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset_multichannel.h5')
+        dataset = H5Dataset('test_dataset_multichannel', './test/data/tmp/dataset/h5/')
+        sample, (meta_class, meta_indices) = dataset[0]
+        meta_indices = np.array(meta_indices,dtype=np.int)
+        test_meta = dataset.get_meta_data_from_indices(meta_indices)
+        gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
+        pd.testing.assert_frame_equal(test_meta, gt_meta)
+        del dataset
+
     def test_initiate_crop_function(self):
         import pandas as pd
         import shutil as sh
