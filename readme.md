@@ -35,6 +35,7 @@ dev intall
 ```bash
 
 git clone https://github.com/CeadeS/PyTorchH5Dataset.git
+cd PyTorchH5Dataset
 pip install -e .
 ```
 
