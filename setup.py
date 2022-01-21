@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pytorch_h5dataset',
-    version='0.1.0',
+    version='0.2.0',
     packages=['pytorch_h5dataset'],
     url='https://github.com/CeadeS/PyTorchH5Dataset',
     license='BSD-3-Clause License',
@@ -21,7 +21,7 @@ setup(
        'torchvision'
        ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
