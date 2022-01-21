@@ -199,7 +199,7 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[1], round(area_ratio,1))
 
 
-        crop_size_aspect_ratio = (0.1, 0.7)
+        crop_size_aspect_ratio = (0.3, 0.7)
         crop_area_ratio_range = (0.2, 0.7)
         batch_height = 217
         batch_width = 244
