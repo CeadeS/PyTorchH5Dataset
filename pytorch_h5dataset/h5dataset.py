@@ -8,6 +8,7 @@ import sndhdr
 import os
 import pandas as pd
 from math import ceil
+import logging
 
 
 class H5Dataset(Dataset):
@@ -410,7 +411,7 @@ class H5Dataset(Dataset):
 
     @staticmethod
     def convert_images_to_dataset(dataset_dataframe,
-                                  dataset_destination_h5_file='D:/Datasets/benchmarking/h5/bikini_dataset.h5',
+                                  dataset_destination_h5_file='./data/test_dataset.h5',
                                   sub_batch_size=50):
         from pathlib import Path
         """
@@ -519,7 +520,7 @@ class H5Dataset(Dataset):
         return pd.DataFrame(datalist)
 
     def __len__(self):
-        return self.max_idx
+        return self.max_idx+1
 
     def __getitem__(self, group_no):
         if self.crop_function is None:
@@ -554,7 +555,7 @@ class H5Dataset(Dataset):
 
     def initiate_crop_function(self, loading_crop_size=(0.73, 1.33), loading_crop_area_ratio_range=244 * 244):
         """
-        Is called after loading the first batch.
+        Is called after loading the first batch. Fixes problem with worker processes that are unable to pickle self.crop_function
         :param loading_crop_size:
         :param loading_crop_area_ratio_range:
         :return:
@@ -570,16 +571,18 @@ class H5Dataset(Dataset):
             dataset_dest_root_dir,
             dataset_sub_batch_size=50,
             filename_to_metadata_func=lambda s: (zip(('name', 'type'), s.split('.'))),
-            overwrite_existing=False
+            overwrite_existing=False,
+            no_class_dirs = False
     ):
         """
-
-        :param dataset_name:
-        :param dataset_source_root_files_dir:
-        :param dataset_dest_root_dir:
-        :param dataset_sub_batch_size:
-        :param filename_to_metadata_func:
-        :param overwrite_existing:
+        Creates a dataset files names dataset_name.<h5/csv>
+        :param dataset_name: name of the dataset. Also the created dataset files name.
+        :param dataset_source_root_files_dir: Data should be stored in this directory. Should have sub directories for the classes.
+        :param dataset_dest_root_dir: Destination for h5 and csv file. If csv file is already existing process is resumed with existing file unless overwrite is set true.
+        :param dataset_sub_batch_size: Number of Samples padded and batched together. The smaller the number the slower the loading and vice versa.
+        :param filename_to_metadata_func: Function that extracts meta data from image names.
+        :param overwrite_existing: If true, meta data and existing h5 are overwritten. If not meta is reused.
+        :param no_class_dirs: Classes are provided in subdirs in dataset_source_files_dir or not.
         :return:
         """
 
@@ -597,7 +600,7 @@ class H5Dataset(Dataset):
 
         if not os.path.exists(metadata_file_path) or overwrite_existing:
             print('Creating meta data file.')
-            metadata = H5Dataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func)
+            metadata = H5Dataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func, no_class_dirs)
             metadata.to_csv(metadata_file_path)
             print("Finished creating meta data file.")
         else:
@@ -651,15 +654,15 @@ class H5Dataset(Dataset):
         with h5py.File(self.dataset_h5_file_path, "r") as h5_file:
             self.max_idx = h5_file['shapes'].attrs['max_idx']
             self.num_samples = 0
-            for group_no in range(self.max_idx):
+            for group_no in range(self.max_idx+1):
                 self.indices.append(np.array(h5_file[f'indices/{group_no}'], dtype=np.dtype('int32')))
                 self.num_samples += len(h5_file[f'indices/{group_no}'])
                 self.batch_shapes.append(np.array(h5_file[f'batch_shapes/{group_no}'][2:], dtype=np.dtype('int32')))
                 self.classes.append(np.array(h5_file[f'classes/{group_no}'], dtype=np.dtype('int32')))
 
     def __del__(self):
-        print("called del")
+        logging.info("called del")
         if self.h5_file is not None and isinstance(self.h5_file, h5py._hl.files.File):
-            print('closing File')
+            logging.info('closing File')
             self.h5_file.close()
-        print("Deletion Complete")
+        logging.info("Deletion Complete")

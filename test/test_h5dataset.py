@@ -466,7 +466,6 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(round(crop_ratio, 1), round(crop_size[1] ,1))
         self.assertAlmostEqual(crop_area, crop_area_ratio_range, delta=int(crop_area*.05))
 
-        #Fail Cases TODO
         h5_group_dummy = np.random.rand(50,5,200,244)
         batch_height, batch_width = 200, 244
         crop_size = (0.7, 1.3)
@@ -545,7 +544,6 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dastaset.h5')
 
-        sh.rmtree('./test/data/tmp')
 
     def test_create_metadata_for_dataset(self):
 
@@ -574,4 +572,114 @@ class TestH5Dataset(TestCase):
         self.assertEqual(dataframe.loc[0]['ClassNo'],0)
         self.assertEqual(len(dataframe),1)
 
+    def test___len__(self):
+        import pandas as pd
+        import shutil as sh
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        self.assertEqual(len(dataset),1)
 
+        import pandas as pd
+        import shutil as sh
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5',1)
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        self.assertEqual(len(dataset),2)
+
+
+    def test___getitem__(self):
+        import pandas as pd
+        import shutil as sh
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        sample, (meta_class, meta_indices) = dataset[0]
+        self.assertEqual(len(sample), 2)
+        self.assertTrue(all(a is not None for a in [sample, meta_class, meta_indices]))
+        self.assertEqual(len(dataset),1)
+        del dataset
+
+    def test_get_meta_data_from_indices(self):
+        import pandas as pd
+        import shutil as sh
+        import numpy as np
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        sample, (meta_class, meta_indices) = dataset[0]
+        test_meta = dataset.get_meta_data_from_indices(meta_indices)
+        gt_meta = dataset.metadata[dataset.metadata['Index'].isin(np.array([1,0]))]
+        self.assertTrue(test_meta.equals(gt_meta))
+        del dataset
+
+    def test_initiate_crop_function(self):
+        import pandas as pd
+        import shutil as sh
+        import numpy as np
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        dataset.initiate_crop_function()
+        self.assertIsNotNone(dataset.crop_function)
+        sample , _ = dataset[0]
+        self.assertAlmostEqual(np.prod(sample.shape[-2:])/100000., 244*244/100000., 2)
+        del dataset
+
+    def test___init__(self):
+        import pandas as pd
+        import shutil as sh
+        import pickle as pkl
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        # Following must be None to be picklable
+        self.assertIsNone(dataset.h5_file)
+        self.assertIsNone(dataset.crop_function)
+        self.assertIsNone(dataset.script_transform)
+        _ = pkl.dumps(dataset)
+
+        sample, (meta_class, meta_indices) = dataset[0]
+        with self.assertRaises(TypeError):
+            pkl.dumps(dataset)
+        del dataset
+
+
+    def test___del__(self):
+        import pandas as pd
+        import shutil as sh
+
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        del dataset
+
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        sample, (meta_class, meta_indices) = dataset[0]
+        del dataset
+
+
+    def tearDown(self):
+        '''
+        Destructor cleans up tmp files after tests are done.
+        :return:
+        '''
+        import shutil as sh
+        try:
+            sh.rmtree('./test/data/tmp')
+        except:
+            pass
