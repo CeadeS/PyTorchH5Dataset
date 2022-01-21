@@ -199,8 +199,8 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[1], round(area_ratio,1))
 
 
-        crop_size_aspect_ratio = (0.3, 0.7)
-        crop_area_ratio_range = (0.3, 0.7)
+        crop_size_aspect_ratio = (0.5, 0.7)
+        crop_area_ratio_range = (0.1, 0.7)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = H5Dataset.get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
@@ -216,7 +216,7 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,1))
 
         crop_size_aspect_ratio = (0.73, 1.33)
-        crop_area_ratio_range = (0.3, 0.6)
+        crop_area_ratio_range = (0.4, 0.6)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = H5Dataset.get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
