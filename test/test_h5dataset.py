@@ -617,6 +617,7 @@ class TestH5Dataset(TestCase):
         sample, (meta_class, meta_indices) = dataset[0]
         test_meta = dataset.get_meta_data_from_indices(meta_indices)
         gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
+        print(test_meta.shape)
         pd.testing.assert_frame_equal(test_meta, gt_meta)
         del dataset
 

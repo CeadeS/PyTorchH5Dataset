@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='pytorch-pytorch',
+    name='pytorch_h5dataset',
     version='0.1.0',
     packages=['pytorch_h5dataset'],
     url='https://github.com/CeadeS/PyTorchH5Dataset',
@@ -17,6 +17,7 @@ setup(
        'Pillow',
        'tables',
        'torch',
+       'scikit-image',
        'torchvision'
        ],
     classifiers=[
