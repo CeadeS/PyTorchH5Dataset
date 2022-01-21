@@ -617,7 +617,7 @@ class TestH5Dataset(TestCase):
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
         test_meta = dataset.get_meta_data_from_indices(meta_indices)
-        gt_meta = dataset.metadata[dataset.metadata['Index'].isin(np.array([1,0]))]
+        gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
         self.assertTrue(test_meta.equals(gt_meta))
         del dataset
 
