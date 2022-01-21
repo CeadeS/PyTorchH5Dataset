@@ -1,3 +1,5 @@
+![PyPI](https://img.shields.io/pypi/v/pytorch-h5dataset)
+
 # This is a Dataset module for PyTorch 
 The dataset uses compressed h5 to accelerate data loading.
 
