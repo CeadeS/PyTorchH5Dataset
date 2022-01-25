@@ -466,21 +466,97 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(round(crop_ratio, 1), round(crop_size[1] ,1))
         self.assertAlmostEqual(crop_area, crop_area_ratio_range, delta=int(crop_area*.05))
 
+        ## Failure Cases
+        
         h5_group_dummy = np.random.rand(50,5,200,244)
         batch_height, batch_width = 200, 244
+
         crop_size = (0.7, 1.3)
         crop_area_ratio_range = (0.6, 1.7)
 
         with self.assertRaises(AssertionError):
             H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
 
-        h5_group_dummy = np.random.rand(50,5,200,244)
-        batch_height, batch_width = 200, 244
         crop_size = (0.7, 1.3)
-        crop_area_ratio_range = (0.6, 1.7)
+        crop_area_ratio_range = (0.6, 1)
 
         with self.assertRaises(AssertionError):
             H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (1, 0.7)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (None, 0.7)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (1.0, None)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (None, None)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = (None)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (0.7, 1.3)
+        crop_area_ratio_range = None
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+
+        crop_size = (0.7, None)
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (None, None)
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (None, 0.7)
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = (None)
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = None
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+        crop_size = 127
+        crop_area_ratio_range = (.8, 1.0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset.random_located_sized_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
+
+
 
     def test_center_crop(self):
         import numpy as np
