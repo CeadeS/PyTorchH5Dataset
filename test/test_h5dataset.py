@@ -467,7 +467,7 @@ class TestH5Dataset(TestCase):
         self.assertAlmostEqual(crop_area, crop_area_ratio_range, delta=int(crop_area*.05))
 
         ## Failure Cases
-        
+
         h5_group_dummy = np.random.rand(50,5,200,244)
         batch_height, batch_width = 200, 244
 

@@ -271,7 +271,7 @@ class H5Dataset(Dataset):
             If its a tuple of len 2 the ratio is chosen in between both numbers.
             If its a number it is a fixed area that is cropped from the image
             Any floats must be in (0,2]
-        :param crop_size: one of (float), (float, float), (None,uint16),(uint16,None), (uint16,uint16),
+        :param crop_size: one of (float), (float, float), (None,int),(int,None), (int,int),
         :param crop_area_ratio_range: one of float, (float), (float, float) (int)
         :return: function that crops a h5 group
         """
