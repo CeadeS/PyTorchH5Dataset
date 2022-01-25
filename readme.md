@@ -1,4 +1,4 @@
-![PyPI](https://img.shields.io/pypi/v/pytorch-[tests](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml)
+![PyPI](https://img.shields.io/pypi/v/pytorch-h5dataset)
 [![tests](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml)
 
 # This is a Dataset module for PyTorch 
