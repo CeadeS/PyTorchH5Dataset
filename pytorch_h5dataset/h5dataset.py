@@ -10,6 +10,10 @@ import pandas as pd
 from math import ceil
 import logging
 
+#TODO
+#handlers = [logging.FileHandler(filename='data_import.log'),logging.StreamHandler(sys.stdout) ]
+#logging.basicConfig(format='%(asctime)s %(message)s', level=log_level , handlers=handlers)
+
 
 class H5Dataset(Dataset):
 
@@ -82,7 +86,8 @@ class H5Dataset(Dataset):
 
     @staticmethod
     def batchify_sorted_sample_data_list(sample_data_list, batch_size=50):
-        for start_idx in range(0, ceil(len(sample_data_list)/batch_size), batch_size):
+
+        for start_idx in range(0, len(sample_data_list), batch_size):
             batch_list = sample_data_list[start_idx:start_idx + batch_size]
             classes, shapes, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
             batch_array = H5Dataset.stack_batch_data_padded(batch_list)
@@ -426,12 +431,13 @@ class H5Dataset(Dataset):
         """
         sample_data_list = []
         for idx in range(len(dataset_dataframe)):
+
             row = dataset_dataframe.loc()[idx]
             im = H5Dataset.load_image_sample(row)
 
             if im.shape == (0, 0, 0):
                 image_path = row['FilePath']
-                print(f"Error in {image_path}")
+                logging.info(f"Error in {image_path}")
                 continue
 
             sample = {
@@ -508,7 +514,7 @@ class H5Dataset(Dataset):
                             f_type = sndhdr.what(file_path)
                             raise NotImplementedError("Sound files not supported yet")
                         if f_type is None:
-                            print(f'Skipped {file_path}, not a recognized file type.')
+                            logging.info(f'Skipped {file_path}, not a recognized file type.')
                             continue
                         meta_entry_dict['FileType'] = f_type
                         if filename_to_metadata_func is not None:
@@ -560,7 +566,7 @@ class H5Dataset(Dataset):
         :param loading_crop_area_ratio_range:
         :return:
         """
-        print("called initiate crop function")
+        logging.info("called initiate crop function")
         self.crop_function = H5Dataset.random_located_sized_crop_function(
             crop_size=loading_crop_size, crop_area_ratio_range=loading_crop_area_ratio_range)
 
@@ -592,27 +598,27 @@ class H5Dataset(Dataset):
             f"Dataset destination directory already exists and overwrite_existing is set to {overwrite_existing}."
 
         if not os.path.exists(dataset_dest_root_dir):
-            print("Create dataset destination file directory.")
+            logging.info("Create dataset destination file directory.")
             os.mkdir(dataset_dest_root_dir)
 
         dataset_h5_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.csv')
 
         if not os.path.exists(metadata_file_path) or overwrite_existing:
-            print('Creating meta data file.')
+            logging.info('Creating meta data file.')
             metadata = H5Dataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func, no_class_dirs)
             metadata.to_csv(metadata_file_path)
-            print("Finished creating meta data file.")
+            logging.info("Finished creating meta data file.")
         else:
             metadata = pd.read_csv(metadata_file_path)
-            print("Meta data file found. Proceeding")
+            logging.info("Meta data file found. Proceeding")
 
         if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
-            print('Converting raw data files to h5.')
+            logging.info('Converting raw data files to h5.')
             H5Dataset.convert_images_to_dataset(dataset_dataframe=metadata,
                                                 dataset_destination_h5_file=dataset_h5_file_path,
                                                 sub_batch_size=dataset_sub_batch_size)
-            print('Finished converting Files')
+            logging.info('Finished converting Files')
 
     def __init__(self,
                  dataset_name='dataset_name',
@@ -633,7 +639,7 @@ class H5Dataset(Dataset):
         metadata_file_path = os.path.join(dataset_root, dataset_name + '.csv')
 
         assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(metadata_file_path), \
-            print(f"Data File {dataset_h5_file_path} or Meta Data {metadata_file_path} not "
+            logging.info(f"Data File {dataset_h5_file_path} or Meta Data {metadata_file_path} not "
                   f"found in {dataset_root} directory. Call create_dataset first.")
 
         super(H5Dataset, self).__init__()
@@ -659,6 +665,7 @@ class H5Dataset(Dataset):
                 self.num_samples += len(h5_file[f'indices/{group_no}'])
                 self.batch_shapes.append(np.array(h5_file[f'batch_shapes/{group_no}'][2:], dtype=np.dtype('int32')))
                 self.classes.append(np.array(h5_file[f'classes/{group_no}'], dtype=np.dtype('int32')))
+        self.sub_batch_size = self.batch_shapes[0].shape[0]
 
     def __del__(self):
         logging.info("called del")
