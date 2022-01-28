@@ -764,6 +764,17 @@ class TestH5Dataset(TestCase):
         sample, (meta_class, meta_indices) = dataset[0]
         del dataset
 
+    def test_num_samples(self):
+        import pandas as pd
+        import shutil as sh
+
+        dataframe = pd.read_csv('./test/data/test_dataset.csv')
+        os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
+        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        self.assertEqual(dataset.num_samples, 2)
+
 
     def tearDown(self):
         '''

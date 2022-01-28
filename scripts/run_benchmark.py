@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
 
     print('H5')
-    for num_workers in [0,0,1,2,3,4,5,6,7,8]:
+    for num_workers in [0]+list(range(psutil.cpu_count())):
         benchmarkdataset = BenchmarkDataset()
         batch_size = 100
         dataLoader = H5DataLoader(dataset=benchmarkdataset.h5dataset, device='cpu:0', batch_size=batch_size,
@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 
     print('Folder')
-    for num_workers in [0,1,2,3,4,5,6,7,8]:
+    for num_workers in list(range(psutil.cpu_count())):
         dataloader = DataLoader(benchmarkdataset.imageFolderDataset, batch_size=batch_size,
                                 num_workers=num_workers, pin_memory=True, shuffle=True)
         l = 0

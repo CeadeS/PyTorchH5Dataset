@@ -557,7 +557,7 @@ class H5Dataset(Dataset):
         :param indices:
         :return:
         """
-        return self.metadata[self.metadata['Index'].isin(np.array(indices,dtype=np.int))]
+        return self.metadata[self.metadata['Index'].isin(np.array(indices,dtype=int))]
 
     def initiate_crop_function(self, loading_crop_size=(0.73, 1.33), loading_crop_area_ratio_range=244 * 244):
         """

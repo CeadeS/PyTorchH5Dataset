@@ -10,7 +10,7 @@ if  pathlib.Path(os.getcwd()).name == 'test':
     os.chdir('../')
 
 
-class TestH5Dataset(TestCase):
+class TestH5Dataloader(TestCase):
 
     def test___init__(self):
         import pandas as pd
@@ -27,7 +27,6 @@ class TestH5Dataset(TestCase):
                                          pin_memory=True,
                                          num_workers=0, collate_fn="dd")
 
-        pass
 
     def test___len__(self):
         import pandas as pd
@@ -49,6 +48,8 @@ class TestH5Dataset(TestCase):
                                   return_meta_indices=True,
                                   pin_memory=True,
                                   num_workers=0, collate_fn=None)
+
+
         self.assertEqual(len(dataloader), 1)
 
 
