@@ -4,6 +4,7 @@ from torch.jit import script
 from . import H5Dataset
 from utils import NormImage
 from pandas import concat
+from math import ceil
 import types
 
 def collate_samples(sample):
@@ -63,7 +64,7 @@ class H5DataLoader(object):
                 perm = tensor(range(len(sample)))
             for i in range(0, perm.size(0), self.batch_size):
                 rand_batch_indexes = perm[i:i + self.batch_size]
-                x = sample[rand_batch_indexes].view(-1, 3 * 244 * 244)
+                x = sample[rand_batch_indexes]
                 y = meta[rand_batch_indexes]
                 if self.return_meta_indices:
                     yield x,(y,meta_indices[rand_batch_indexes])
@@ -72,4 +73,4 @@ class H5DataLoader(object):
         self.dataset.script_transform = None
 
     def __len__(self):
-        return len(self.dataloader)
+        return ceil(len(self.dataset)/self.batch_size)
