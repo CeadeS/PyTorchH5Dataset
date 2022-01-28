@@ -63,15 +63,16 @@ class Benchmarker(object):
     def decorate_iterator_class(_self, _iterator):
         class Iterator(object):
             def __init__(self, *args, **kwargs):
-                self.iterator = _iterator(*args, **kwargs)
+                self._iterator = _iterator(*args, **kwargs)
+                self.iterator = None ## ugly TODO find a correct way
 
             def __next__(self):
-                ret = self.iterator.__next__()
+                ret = next(self.iterator)
                 _self.record_stats()
                 return ret
 
             def __iter__(self):
-                self.iterator = self.iterator.__iter__()
+                self.iterator = iter(self._iterator)
                 return self
 
             def __len__(self):

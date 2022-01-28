@@ -3,6 +3,9 @@ if __name__ == '__main__':
     from pytorch_h5dataset.benchmark import BenchmarkDataset
     from pytorch_h5dataset import H5DataLoader
     from time import time
+    import psutil
+    import platform
+    cpu_count = 0 if platform.system() == 'Windows' else psutil.cpu_count()
     from torch.utils.data import DataLoader
 
     benchmarkdataset = BenchmarkDataset()
