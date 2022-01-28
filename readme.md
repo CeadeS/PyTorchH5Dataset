@@ -1,4 +1,5 @@
 ![PyPI](https://img.shields.io/pypi/v/pytorch-h5dataset)
+[![tests](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml)
 
 # This is a Dataset module for PyTorch 
 The dataset uses compressed h5 to accelerate data loading.
