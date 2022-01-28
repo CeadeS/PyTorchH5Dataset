@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='pytorch_h5dataset',
-    version='0.2.0',
-    packages=['pytorch_h5dataset'],
+    version='0.2.1',
+    packages=find_packages(),
     url='https://github.com/CeadeS/PyTorchH5Dataset',
     license='BSD-3-Clause License',
     author='Martin Hofmann',

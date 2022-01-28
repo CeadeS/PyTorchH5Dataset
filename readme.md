@@ -62,7 +62,7 @@ from torch import nn, float32, as_tensor
 from torch.nn import MSELoss
 from torch.jit import script
 from time import time
-from utils import NormImage
+from pytorch_h5dataset.utils import NormImage
 from numpy import prod
 
 norm = script(NormImage()).cuda()
@@ -74,10 +74,10 @@ batch_size = 100
 epochs = 100
 device = 'cuda:0'
 dataset = H5Dataset(dataset_name="test_dataset",
-                    dataset_root= "path/to/dataset",  # empl: '../test/data/tmp/dataset/h5',
+                    dataset_root="path/to/dataset",  # empl: '../test/data/tmp/dataset/h5',
                     transforms=Resize((244, 244)),
                     loading_crop_size=(0.73, 1.33),  # cropped aspect ratio
-                    loading_crop_area_ratio_range= 244 * 244)  # number of cropped px read more at definition of random_located_sized_crop_function
+                    loading_crop_area_ratio_range=244 * 244)  # number of cropped px read more at definition of random_located_sized_crop_function
 
 dataloader = H5DataLoader(dataset=dataset,
                           device='cpu:0', batch_size=1,
@@ -94,8 +94,8 @@ for e in range(epochs):
     for sample, label in dataloader:
         if isinstance(label, tuple):
             label = label[0]
-        x = sample.to(device).view(sample.size(0),-1)
-        y = as_tensor(label.view(-1), dtype=float32,device=device).requires_grad_(True)
+        x = sample.to(device).view(sample.size(0), -1)
+        y = as_tensor(label.view(-1), dtype=float32, device=device).requires_grad_(True)
         y_out = model(x).argmax(1).float()
         num_out += prod(y_out.shape)
         loss = criterion(y, y_out)

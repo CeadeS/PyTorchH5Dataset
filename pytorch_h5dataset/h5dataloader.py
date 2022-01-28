@@ -2,7 +2,7 @@ from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda
 from torch.utils import data
 from torch.jit import script
 from . import H5Dataset
-from utils import NormImage
+from pytorch_h5dataset.utils import NormImage
 from pandas import concat
 from math import ceil
 import types
