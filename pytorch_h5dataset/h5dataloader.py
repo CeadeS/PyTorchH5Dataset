@@ -1,4 +1,4 @@
-from torch import tensor, as_tensor, float32, randperm, Tensor, cat
+from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda
 from torch.utils import data
 from torch.jit import script
 from . import H5Dataset
@@ -35,11 +35,11 @@ class H5DataLoader(object):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.num_sub_batches_buffered = dataset.sub_batch_size
-        self.device = device
+        self.device = device if cuda.is_available() else 'cpu'
         self.normalize = normalize
         self.dataset = dataset
         self.return_meta_indices = return_meta_indices
-        self.pin_memory = pin_memory
+        self.pin_memory = pin_memory if cuda.is_available() else False
         assert collate_fn is None or isinstance(collate_fn, types.FunctionType), "Collate Function must be a function"
         self.collate_fn = collate_fn if collate_fn is not None else collate_samples
         self.shuffle = shuffle

@@ -216,7 +216,7 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,1))
 
         crop_size_aspect_ratio = (0.73, 1.33)
-        crop_area_ratio_range = (0.4, 0.6)
+        crop_area_ratio_range = (0.4, 1.0)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = H5Dataset.get_random_crop_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
@@ -707,7 +707,7 @@ class TestH5Dataset(TestCase):
         H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset_multichannel.h5')
         dataset = H5Dataset('test_dataset_multichannel', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
-        meta_indices = np.array(meta_indices,dtype=np.int)
+        meta_indices = np.array(meta_indices,dtype=int)
         test_meta = dataset.get_meta_data_from_indices(meta_indices)
         gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
         pd.testing.assert_frame_equal(test_meta, gt_meta)
