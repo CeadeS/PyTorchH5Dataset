@@ -8,3 +8,4 @@ Pillow
 torchvision
 scikit-image
 psutil
+tqdm
