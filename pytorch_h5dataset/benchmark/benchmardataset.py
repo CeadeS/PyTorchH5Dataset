@@ -44,11 +44,11 @@ class BenchmarkDataset:
             os.remove('./tmp.f')
 
 
-    def __init__(self, mode = 'val', crop_ratio=(0.73,1.33),crop_size=(244,244), crop_area=(0.1,1.0), dataset_root='../../data'):
+    def __init__(self, mode = 'val', crop_ratio=(0.73,1.33),crop_size=(244,244), crop_area=(0.1,1.0), dataset_root='../data'):
         im_url = f"http://images.cocodataset.org/zips/{mode}2017.zip"
         an_url = f"http://images.cocodataset.org/annotations/annotations_trainval2017.zip"
-        download_path = "{dataset_root}/download"
-        destination_path =  "{dataset_root}/h5"
+        download_path = f"{dataset_root}/download"
+        destination_path =  f"{dataset_root}/h5"
 
         im_zip_file_path = os.path.join(download_path, f"coco2017_{mode}_imgs.zip")
         an_zip_file_path = os.path.join(download_path, f"coco2017_{mode}_anns.zip")
@@ -141,13 +141,13 @@ class BenchmarkDataset:
 
         H5Dataset.create_dataset(f'coco2017_{mode}',
                                  fr'{dataset_root}/download/coco2017_{mode}_imgs',
-                                 r'{dataset_root}/h5',
+                                 fr'{dataset_root}/h5',
                                  filename_to_metadata_func=None,
                                  dataset_sub_batch_size = 100
                                  )
 
         self.h5_transform = nn.Sequential(transforms.Resize(crop_size))
-        self.h5dataset = H5Dataset(f'coco2017_{mode}', r'{dataset_root}/h5', crop_ratio, crop_area, self.h5_transform)
+        self.h5dataset = H5Dataset(f'coco2017_{mode}', fr'{dataset_root}/h5', crop_ratio, crop_area, self.h5_transform)
 
 
 

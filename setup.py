@@ -18,7 +18,9 @@ setup(
        'tables',
        'torch',
        'scikit-image',
-       'torchvision'
+       'torchvision',
+        'psutil',
+        'tqdm',
        ],
     classifiers=[
         'Development Status :: 4 - Beta',

@@ -15,7 +15,6 @@ class TestH5Dataset(TestCase):
     def test___init__(self):
         import pandas as pd
         import shutil as sh
-        import pickle as pkl
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
@@ -33,7 +32,6 @@ class TestH5Dataset(TestCase):
     def test___len__(self):
         import pandas as pd
         import shutil as sh
-        import pickle as pkl
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
