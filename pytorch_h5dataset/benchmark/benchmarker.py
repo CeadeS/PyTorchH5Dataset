@@ -64,13 +64,18 @@ class Benchmarker(object):
         class Iterator(object):
             def __init__(self, *args, **kwargs):
                 self.iterator = _iterator(*args, **kwargs)
+
             def __next__(self):
                 ret = self.iterator.__next__()
                 _self.record_stats()
                 return ret
+
             def __iter__(self):
                 self.iterator = self.iterator.__iter__()
                 return self
+
+            def __len__(self):
+                return len(self.iterator)
 
         return Iterator
 
