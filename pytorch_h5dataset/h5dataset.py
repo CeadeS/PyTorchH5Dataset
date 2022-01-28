@@ -638,9 +638,7 @@ class H5Dataset(Dataset):
         dataset_h5_file_path = os.path.join(dataset_root, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_root, dataset_name + '.csv')
 
-        assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(metadata_file_path), \
-            logging.info(f"Data File {dataset_h5_file_path} or Meta Data {metadata_file_path} not "
-                  f"found in {dataset_root} directory. Call create_dataset first.")
+        assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(metadata_file_path), f"found in {dataset_root} directory. Call create_dataset first."
 
         super(H5Dataset, self).__init__()
 
