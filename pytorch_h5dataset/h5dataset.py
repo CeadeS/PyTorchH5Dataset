@@ -7,8 +7,10 @@ import imghdr
 import sndhdr
 import os
 import pandas as pd
-from math import ceil
+import random
 import logging
+import difflib
+from math import floor
 
 #TODO
 #handlers = [logging.FileHandler(filename='data_import.log'),logging.StreamHandler(sys.stdout) ]
@@ -263,19 +265,21 @@ class H5Dataset(Dataset):
         The original batch pixel area is reduced matching the crop_area_ratio.
         The pixel aspect ratio is given by crop_size
 
-        :parameters
-        crop_size
-            If crop size is a integer tuple the given side(s) is/are fixed.
-            If crop size is given as a float value the width/height aspect ratio is fixed.
-            If crop size is given as a 2-tuple of floats the height/width aspect ratio is in range of the crop size.
-            all floats must be in [0.1,10]
-            all uints must be in (0, maxint)
-        crop_area_ratio_range
-            Float tuple determining the cropped area of the batched images.
-            If its length is 1, the ratio is fixed.
-            If its a tuple of len 2 the ratio is chosen in between both numbers.
-            If its a number it is a fixed area that is cropped from the image
-            Any floats must be in (0,2]
+        parameters:
+            crop_size:
+                If crop size is a integer tuple the given side(s) is/are fixed.
+                If crop size is given as a float value the width/height aspect ratio is fixed.
+                If crop size is given as a 2-tuple of floats the height/width aspect ratio is in range of the crop size.
+                all floats must be in [0.1,10]
+                all uints must be in (0, maxint)
+            crop_area_ratio_range:
+                Float tuple determining the cropped area of the batched images.
+                If its length is 1, the ratio is fixed.
+                If its a tuple of len 2 the ratio is chosen in between both numbers.
+                If its a number it is a fixed area that is cropped from the image
+                Any floats must be in (0,2]
+
+
         :param crop_size: one of (float), (float, float), (None,int),(int,None), (int,int),
         :param crop_area_ratio_range: one of float, (float), (float, float) (int)
         :return: function that crops a h5 group
@@ -526,16 +530,18 @@ class H5Dataset(Dataset):
         return pd.DataFrame(datalist)
 
     def __len__(self):
-        return self.max_idx+1
+        return len(self.group_number_mapping)
+        return self.max_idx
 
     def __getitem__(self, group_no):
+        group_no = self.group_number_mapping[group_no]
         if self.crop_function is None:
             self.crop_function = H5Dataset.random_located_sized_crop_function(
                 crop_size=self.crop_size, crop_area_ratio_range=self.crop_area_ratio_range)
         if self.h5_file is None:
             self.h5_file = h5py.File(self.dataset_h5_file_path, "r")
 
-        if self.transforms is not None and self.script_transform is None:
+        if self.transforms is not None and isinstance(self.transforms, torch.nn.Module):
             self.script_transform = torch.jit.script(self.transforms)
 
         batch_shape = self.batch_shapes[group_no]
@@ -620,25 +626,62 @@ class H5Dataset(Dataset):
                                                 sub_batch_size=dataset_sub_batch_size)
             logging.info('Finished converting Files')
 
+    def get_group_number_mapping(self):
+        group_indices = list(range(self.max_idx))
+        if self.split_mode == 'montecarlo': ## select random subset
+            random.Random(self.split_number).shuffle(group_indices)
+            split_size = int(self.split_ratio * len(group_indices))
+            selected_group_indices = group_indices[0:split_size]
+        if self.split_mode == 'full':
+            selected_group_indices = group_indices
+        if self.split_mode in ['split', 'cross_val']:
+            split_begin = round(sum(self.split_ratio[0:self.split_number])*len(group_indices))
+            split_end = round((1-sum(self.split_ratio[self.split_number+1:]))*len(group_indices))
+            selected_group_indices = group_indices[split_begin:split_end]
+
+        return selected_group_indices
+
     def __init__(self,
                  dataset_name='dataset_name',
                  dataset_root='/path/to/dataset',
                  loading_crop_size=(0.73, 1.33),
                  loading_crop_area_ratio_range=244 * 244,
-                 transforms=None
+                 transforms=None,
+                 split_mode = 'montecarlo',
+                 split_ratio = 0.1,
+                 split_number =0
                  ):
         """
+        Constructor of the Dataset.
 
-        :param dataset_name:
-        :param dataset_root:
-        :param loading_crop_size:
-        :param loading_crop_area_ratio_range:
-        :param transforms:
+        :param dataset_name: Name of the datset files.
+        :param dataset_root: Path to the dataset folder.
+        :param loading_crop_size: Crop size aspect ratio range - see random_located_sized_crop_function().
+        :param loading_crop_area_ratio_range: Number of values cropped from sample OR range of cropped values proportion.
+        :param transforms: torchvision.transforms instance, Module or Transform. Module is not pickable after first iteration if Modules are used. Instantiate Dataloaders before first iteration!!
+        :param split_mode: Determine the data split. ;must be in ['full', 'montecarlo', 'cross_val', split']
+        :param split_ratio: float setting the percentage that is split for training if split_mode is full or montecarlo - int if split_mode is cross_val determining the number of splits, tuple of floats if mode is split
+        :param split_number: int. for montecarlo this is the random seed
         """
         dataset_h5_file_path = os.path.join(dataset_root, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_root, dataset_name + '.csv')
+        self.h5_file = None
 
+        assert split_number >=0 and isinstance(split_number, int), f"split_number musst be a nonzero integer value but it is {split_number}"
         assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(metadata_file_path), f"found in {dataset_root} directory. Call create_dataset first."
+        assert split_mode.lower() in ['montecarlo', 'full', 'cross_val', 'split'], f"split_mode is {split_number} but must be in ['montecarlo', 'full', 'cross_val', 'split']. Did you mean {difflib.get_close_matches(split_mode, ['montecarlo', 'full', 'cross_val', 'split'])}?"
+        if split_mode.lower() == 'montecarlo' or split_mode == 'full':
+            assert isinstance(split_ratio, float) and 0<split_ratio<1, f"The proportion of train samples must be given as float in {split_mode} mode"
+        elif split_mode.lower() == 'cross_val':
+            assert isinstance(split_ratio, int) and split_ratio > 0, f"Split_ratio in case if cross_val is the number of splits (n-fold) and therefore must be an integer larger than 1."
+            assert isinstance(split_number, int) and split_number in range(split_ratio), f"The 'split_number' must be in range of the n-fold. You selected split no. {split_number} but you have {range(split_ratio)} splits."
+            split_ratio = tuple((1./split_ratio for _ in range(split_ratio)))
+        elif split_mode.lower() == 'split':
+            assert isinstance(split_ratio, tuple) and all((isinstance(a, float)for a in split_ratio)) and all((0<a<1.for a in split_ratio)), "In 'split mode', the split_ratio is given as tuple of floats adding up to one. Every number refers to the percentage of data in that split."
+            assert 0.999 <= sum(split_ratio) <= 1.001, f"The split ratios must add up to one. Split ratio sum is {sum(split_ratio)}"
+            assert isinstance(split_number, int) and split_number in range(len(split_ratio)), f"The 'split_number' must be an integer selecting a split percentage in 'split_ratio'"
+        else:
+            raise ValueError(f'Unsupported variable combination. This should not happen.')
 
         super(H5Dataset, self).__init__()
 
@@ -646,7 +689,7 @@ class H5Dataset(Dataset):
         self.metadata_file_path = metadata_file_path
         self.crop_size = loading_crop_size
         self.crop_area_ratio_range = loading_crop_area_ratio_range
-        self.h5_file = None
+
         self.crop_function = None
         self.batch_shapes = []
         self.classes = []
@@ -654,16 +697,22 @@ class H5Dataset(Dataset):
         self.transforms = transforms
         self.script_transform = None
         self.metadata = pd.read_csv(metadata_file_path)
+        self.split_mode = split_mode.lower()
+        self.split_ratio = split_ratio
+        self.split_number = split_number
 
         with h5py.File(self.dataset_h5_file_path, "r") as h5_file:
-            self.max_idx = h5_file['shapes'].attrs['max_idx']
+            self.max_idx = h5_file['shapes'].attrs['max_idx']+1
             self.num_samples = 0
-            for group_no in range(self.max_idx+1):
+            for group_no in range(self.max_idx):
                 self.indices.append(np.array(h5_file[f'indices/{group_no}'], dtype=np.dtype('int32')))
                 self.num_samples += len(h5_file[f'indices/{group_no}'])
                 self.batch_shapes.append(np.array(h5_file[f'batch_shapes/{group_no}'][2:], dtype=np.dtype('int32')))
                 self.classes.append(np.array(h5_file[f'classes/{group_no}'], dtype=np.dtype('int32')))
+
         self.sub_batch_size = self.batch_shapes[0].shape[0]
+
+        self.group_number_mapping =  self.get_group_number_mapping()
 
     def __del__(self):
         logging.info("called del")

@@ -732,21 +732,80 @@ class TestH5Dataset(TestCase):
         import pandas as pd
         import shutil as sh
         import pickle as pkl
+        from torchvision.transforms import Resize
+        from torch import nn
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
         H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
-        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', transforms=Resize)
         # Following must be None to be picklable
         self.assertIsNone(dataset.h5_file)
         self.assertIsNone(dataset.crop_function)
         self.assertIsNone(dataset.script_transform)
         _ = pkl.dumps(dataset)
 
+        dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', transforms=nn.Sequential(Resize((12,12))))
         sample, (meta_class, meta_indices) = dataset[0]
         with self.assertRaises(TypeError):
             pkl.dumps(dataset)
-        del dataset
+
+        self.assertIsNotNone(dataset.script_transform)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=1.0, split_number=-1)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=1.0, split_number=0.1)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=1, split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=-.1, split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=1.1, split_number=0)
+
+
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='cross_val', split_ratio=1.1, split_number=5)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='cross_val', split_ratio=5, split_number=6)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='cross_val', split_ratio=0, split_number=0)
+
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=0, split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=0.1, split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=[1,2,3], split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=[0.1,0.5,0.5], split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=[0.1,0.5,0.4], split_number=0)
+        with self.assertRaises(AssertionError):
+            H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=[0.1,0.5,0.4], split_number=3)
+
+
+        d = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='montecarlo', split_ratio=.2, split_number=0)
+        d.max_idx=100
+        r = d.get_group_number_mapping()
+        self.assertEqual(len(r), 20)
+
+        d = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='cross_val', split_ratio=8, split_number=7)
+        d.max_idx=100
+        r = d.get_group_number_mapping() # lengths should be [12,13,13,12,12,13,12]
+        self.assertEqual(len(r), 12)
+        d = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='cross_val', split_ratio=8, split_number=6)
+        d.max_idx=100
+        r = d.get_group_number_mapping() # lengths should be [12,13,13,12,12,13,12]
+        self.assertEqual(len(r), 13)
+
+        d = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', split_mode='split', split_ratio=(0.1,0.4,0.2,0.2,0.1), split_number=3)
+        d.max_idx=100
+        r = d.get_group_number_mapping()
+        self.assertEqual(len(r), 20)
+
+
 
 
     def test___del__(self):

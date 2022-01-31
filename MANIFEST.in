@@ -1,1 +1,1 @@
-recursive-exclude pytorch_h5dataset/benchmark *.py
+recursive-exclude data *.py
