@@ -633,12 +633,12 @@ class H5Dataset(Dataset):
             split_size = int(self.split_ratio * len(group_indices))
             selected_group_indices = group_indices[0:split_size]
         if self.split_mode == 'full':
-            selected_group_indices = group_indices
+            split_size = int(self.split_ratio * len(group_indices))
+            selected_group_indices = group_indices[:split_size]
         if self.split_mode in ['split', 'cross_val']:
             split_begin = round(sum(self.split_ratio[0:self.split_number])*len(group_indices))
             split_end = round((1-sum(self.split_ratio[self.split_number+1:]))*len(group_indices))
             selected_group_indices = group_indices[split_begin:split_end]
-
         return selected_group_indices
 
     def __init__(self,
@@ -647,8 +647,8 @@ class H5Dataset(Dataset):
                  loading_crop_size=(0.73, 1.33),
                  loading_crop_area_ratio_range=244 * 244,
                  transforms=None,
-                 split_mode = 'montecarlo',
-                 split_ratio = 0.1,
+                 split_mode = 'full',
+                 split_ratio = 1.0,
                  split_number =0
                  ):
         """
@@ -671,7 +671,7 @@ class H5Dataset(Dataset):
         assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(metadata_file_path), f"found in {dataset_root} directory. Call create_dataset first."
         assert split_mode.lower() in ['montecarlo', 'full', 'cross_val', 'split'], f"split_mode is {split_number} but must be in ['montecarlo', 'full', 'cross_val', 'split']. Did you mean {difflib.get_close_matches(split_mode, ['montecarlo', 'full', 'cross_val', 'split'])}?"
         if split_mode.lower() == 'montecarlo' or split_mode == 'full':
-            assert isinstance(split_ratio, float) and 0<split_ratio<1, f"The proportion of train samples must be given as float in {split_mode} mode"
+            assert isinstance(split_ratio, float) and 0<split_ratio<=1, f"The proportion of train samples must be given as float in {split_mode} mode"
         elif split_mode.lower() == 'cross_val':
             assert isinstance(split_ratio, int) and split_ratio > 0, f"Split_ratio in case if cross_val is the number of splits (n-fold) and therefore must be an integer larger than 1."
             assert isinstance(split_number, int) and split_number in range(split_ratio), f"The 'split_number' must be in range of the n-fold. You selected split no. {split_number} but you have {range(split_ratio)} splits."
