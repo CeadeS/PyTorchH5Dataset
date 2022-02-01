@@ -1,7 +1,7 @@
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 ![PyPI](https://img.shields.io/pypi/v/pytorch-h5dataset)
 [![tests](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml/badge.svg)](https://github.com/CeadeS/PyTorchH5Dataset/actions/workflows/tests.yml)
-
+[![codecov](https://codecov.io/gh/CeadeS/PyTorchH5Dataset/branch/main/graph/badge.svg?token=8GN4N5TU63)](https://codecov.io/gh/CeadeS/PyTorchH5Dataset)
 
 # This is a Dataset module for PyTorch 
 The dataset uses compressed h5 to accelerate data loading.
