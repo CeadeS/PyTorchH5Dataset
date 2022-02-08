@@ -55,27 +55,27 @@ something_sample = {
 
 
 class TestH5Dataset(TestCase):
-    def test_load_image_sample(self):
+    def test_load_sample(self):
         # jpg/png
 
         sample = {
             'FilePath': andromeda_sample['path'],
         }
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, andromeda_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
             'FilePath': andromeda_sample['path'],
             'FileType': 'png'
         }
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, andromeda_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
             'FilePath': pano_sample['path'],
             'FileType': 'jpg'
         }
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, pano_sample['shape']), 'Loaded Image has the wrong shape'
 
         # tif
@@ -83,20 +83,20 @@ class TestH5Dataset(TestCase):
             'FilePath': something_sample['path'],
             'FileType': 'tif'
         }
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, something_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
             'FilePath': something_sample['path'],
         }
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, something_sample['shape']), 'Loaded Image has the wrong shape'
 
         sample = {
             'FilePath': pollen_sample['path'],
         }
 
-        image = H5Dataset.load_image_sample(sample)
+        image = H5Dataset.load_sample(sample)
         self.assertEqual(image.shape, pollen_sample['shape']), 'Loaded Image has the wrong shape'
 
     def test_stack_batch_data_padded(self):
@@ -599,26 +599,26 @@ class TestH5Dataset(TestCase):
         crop = H5Dataset.center_crop_as_tensor(h5_group_dummy, batch_height, batch_width, crop_height, crop_width)
         self.assertIsInstance(crop, torch.Tensor)
 
-    def test_crop_original_image_from_batch(self):
+    def test_crop_original_sample_from_batch(self):
         import numpy as np
         batch = np.random.rand(3,5,200,244)
         shapes = ((50,144),(177,34),(190,234))
-        crops = H5Dataset.crop_original_image_from_batch(batch, shapes)
+        crops = H5Dataset.crop_original_samples_from_batch(batch, shapes)
         crop_shapes = tuple(crop.shape[-2:] for crop in crops)
         self.assertEqual(crop_shapes, shapes)
 
         batch = np.random.rand(3,5,200,244)
         shapes = ((50,144),(177,34),(190,1000))
-        crops = H5Dataset.crop_original_image_from_batch(batch, shapes)
+        crops = H5Dataset.crop_original_samples_from_batch(batch, shapes)
         crop_shapes = tuple(crop.shape[-2:] for crop in crops)
         right_shapes = ((50,144),(177,34),(190,244))
         self.assertEqual(crop_shapes, right_shapes)
 
-    def test_convert_images_to_dataset(self):
+    def test_convert_samples_to_dataset(self):
         import pandas as pd
         import shutil as sh
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dastaset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dastaset.h5')
 
 
     def test_create_metadata_for_dataset(self):
@@ -654,7 +654,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         self.assertEqual(len(dataset),1)
 
@@ -663,7 +663,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5',1)
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5',1)
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         self.assertEqual(len(dataset),2)
 
@@ -674,7 +674,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
         self.assertEqual(len(sample), 2)
@@ -685,26 +685,22 @@ class TestH5Dataset(TestCase):
     def test_get_meta_data_from_indices(self):
         import pandas as pd
         import shutil as sh
+        import numpy as np
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
         test_meta = dataset.get_meta_data_from_indices(meta_indices)
         gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
-        print(test_meta.shape)
         pd.testing.assert_frame_equal(test_meta, gt_meta)
         del dataset
 
-    def test_get_meta_data_from_indices(self):
-        import pandas as pd
-        import shutil as sh
-        import numpy as np
         dataframe = pd.read_csv('./test/data/test_dataset_multichannel.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset_multichannel.csv','./test/data/tmp/dataset/h5/test_dataset_multichannel.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset_multichannel.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset_multichannel.h5')
         dataset = H5Dataset('test_dataset_multichannel', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
         meta_indices = np.array(meta_indices,dtype=int)
@@ -720,7 +716,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         dataset.initiate_crop_function()
         self.assertIsNotNone(dataset.crop_function)
@@ -737,7 +733,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/', transforms=Resize)
         # Following must be None to be picklable
         self.assertIsNone(dataset.h5_file)
@@ -815,7 +811,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         del dataset
 
@@ -830,7 +826,7 @@ class TestH5Dataset(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         self.assertEqual(dataset.num_samples, 2)
 

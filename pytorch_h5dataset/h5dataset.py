@@ -20,7 +20,7 @@ from math import floor
 class H5Dataset(Dataset):
 
     @staticmethod
-    def blosc_opts(complevel=9, complib='blosc:lz4', shuffle: any = True):
+    def blosc_opts(complevel=9, complib='blosc:lz4hc', shuffle: any = 'bit'):
         """
         Code from https://github.com/h5py/h5py/issues/611#issuecomment-497834183 for issue https://github.com/h5py/h5py/issues/611
         :param complevel:
@@ -40,7 +40,7 @@ class H5Dataset(Dataset):
         return args
 
     @staticmethod
-    def load_image_sample(sample):
+    def load_sample(sample):
         from PIL import Image
         from skimage import io as skio
         import io
@@ -53,9 +53,12 @@ class H5Dataset(Dataset):
             file_type = imghdr.what(sample[path_key])
 
         if file_type in ['tif', 'tiff']:
-            im = skio.imread(sample[path_key])
-            im = np.moveaxis(np.array(im), -1, 0)
-            return im
+            spl = skio.imread(sample[path_key])
+            spl = np.moveaxis(np.array(spl), -1, 0)
+            return spl
+        elif file_type in ['numpy', 'np']:
+            spl = np.load(sample[path_key])
+            return spl
         else:
             with open(sample[path_key ], 'rb') as f:
                 im = Image.open(io.BytesIO(f.read()))
@@ -75,10 +78,10 @@ class H5Dataset(Dataset):
         batch_dimensions = None
         for sample_idx, sample in enumerate(batch_list):
             sample_shape = sample['shape']
-            im = H5Dataset.load_image_sample(sample)
+            im = H5Dataset.load_sample(sample)
             if batch_array is None:
                 batch_dimensions = ([len(batch_list)] + [im.shape[0], max_height, max_width])
-                batch_array = np.zeros(batch_dimensions, dtype=np.uint8)
+                batch_array = np.zeros(batch_dimensions, dtype=np.array(im).dtype)
             begin_idx_1 = (batch_dimensions[2] - sample_shape[1]) // 2
             end_idx_1 = begin_idx_1 + sample_shape[1]
             begin_idx_2 = (batch_dimensions[3] - sample_shape[2]) // 2
@@ -199,17 +202,17 @@ class H5Dataset(Dataset):
 
         """
         Function crops a sub batch i.e a h5_group.
-        The image Tensor is expected to have [..., H, W] shape.
+        The sample Tensor is expected to have [..., H, W] shape.
         The original batch pixel area is reduced matching the crop_area_ratio.
         The pixel aspect ratio is given by crop_size
 
         :parameters
         h5_group
-            The selected h5_group containing the datasets' images
+            The selected h5_group containing the datasets'
         batch_width
-            The Width of the images in the sub batch
+            The Width of the samples in the sub batch
         batch_height
-            The height of the images in the sub batch
+            The height of the samples in the sub batch
         crop_size
             If crop size is a integer tuple the given side(s) is/are fixed.
             If crop size is given as a float value the width/height aspect ratio is fixed.
@@ -217,18 +220,18 @@ class H5Dataset(Dataset):
             all floats must be in [0.1,10]
             all uints must be in (0, maxint)
         crop_area_ratio_range
-            Float tuple determining the cropped area of the batched images.
+            Float tuple determining the cropped area of the batched samples.
             If its length is 1, the ratio is fixed.
             If its a tuple of len 2 the ratio is chosen in between both numbers.
-            If its a number it is a fixed area that is cropped from the image
+            If its a number it is a fixed area that is cropped from the samples
             Any floats must be in (0,2]
 
-        :param h5_group: h5group of images
+        :param h5_group: h5group of samples
         :param batch_width: uint16
         :param batch_height: uint16
         :param crop_size: one of (float), (float, float), (None,int),(int,None), (uint16,int),
         :param crop_area_ratio_range: one of (float), (float, float)
-        :return: cropped sub batch of images of type np.ndarray
+        :return: cropped sub batch of samples of type np.ndarray
         """
         func = H5Dataset.random_located_sized_crop_function(crop_size=crop_size,
                                                             crop_area_ratio_range=crop_area_ratio_range)
@@ -273,10 +276,10 @@ class H5Dataset(Dataset):
                 all floats must be in [0.1,10]
                 all uints must be in (0, maxint)
             crop_area_ratio_range:
-                Float tuple determining the cropped area of the batched images.
+                Float tuple determining the cropped area of the batched samples.
                 If its length is 1, the ratio is fixed.
                 If its a tuple of len 2 the ratio is chosen in between both numbers.
-                If its a number it is a fixed area that is cropped from the image
+                If its a number it is a fixed area that is cropped from the samples
                 Any floats must be in (0,2]
 
 
@@ -407,7 +410,7 @@ class H5Dataset(Dataset):
         return torch.as_tensor(ret)
 
     @staticmethod
-    def crop_original_image_from_batch(batch, shapes):
+    def crop_original_samples_from_batch(batch, shapes):
         batch_shape = batch[0].shape
         imlist = []
         for idx, sample_shape in enumerate(shapes):
@@ -419,7 +422,7 @@ class H5Dataset(Dataset):
         return imlist
 
     @staticmethod
-    def convert_images_to_dataset(dataset_dataframe,
+    def convert_samples_to_dataset(dataset_dataframe,
                                   dataset_destination_h5_file='./data/test_dataset.h5',
                                   sub_batch_size=50):
         from pathlib import Path
@@ -430,18 +433,18 @@ class H5Dataset(Dataset):
 
         :param dataset_dataframe: pandas dataframe with columns named: Index, FilePath, ClassNo, FileType...
         :param dataset_destination_h5_file: string filepath
-        :param sub_batch_size: int number of padded images stored together in one group
+        :param sub_batch_size: int number of padded samples stored together in one group
         :return: None
         """
         sample_data_list = []
         for idx in range(len(dataset_dataframe)):
 
             row = dataset_dataframe.loc()[idx]
-            im = H5Dataset.load_image_sample(row)
+            im = H5Dataset.load_sample(row)
 
             if im.shape == (0, 0, 0):
-                image_path = row['FilePath']
-                logging.info(f"Error in {image_path}")
+                sample_path = row['FilePath']
+                logging.info(f"Error in {sample_path}")
                 continue
 
             sample = {
@@ -514,9 +517,15 @@ class H5Dataset(Dataset):
                                            'Index': i,
                                            'ClassFolderName': cl}
                         f_type = imghdr.what(file_path)
-                        if f_type is None:
-                            f_type = sndhdr.what(file_path)
+                        if f_type is None and sndhdr.what(file_path) is not None:
+                            f_type = sndhdr.whathdr(file_path)
                             raise NotImplementedError("Sound files not supported yet")
+                        if f_type is None:
+                            try:
+                                np.load(file_path, allow_pickle=True)
+                                f_type = 'np'
+                            except ValueError:
+                                pass
                         if f_type is None:
                             logging.info(f'Skipped {file_path}, not a recognized file type.')
                             continue
@@ -546,14 +555,19 @@ class H5Dataset(Dataset):
 
         batch_shape = self.batch_shapes[group_no]
         group = self.h5_file[f'samples/{group_no}']
-        # return self.random_located_sized_crop(group, *batch_shape, self.crop_size, self.crop_area_ratio_range)
 
-        sample = torch.as_tensor(self.crop_function(group, *batch_shape))
+        #sample = torch.as_tensor(self.crop_function(group, *batch_shape))
+
+        sample = self.crop_function(group, *batch_shape)  ## FIX for Issue with TIFF uint16 dtypes
+        if sample.dtype == np.uint16:
+            sample = sample.astype(int)
+        sample = torch.from_numpy(sample)
         if self.script_transform is not None:
             self.script_transform = self.script_transform
             sample = self.script_transform(sample)
 
-        meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no]))
+        #meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no]))
+        meta_data = (torch.from_numpy(self.classes[group_no]), torch.from_numpy(self.indices[group_no]))
 
         return sample, meta_data
 
@@ -592,7 +606,7 @@ class H5Dataset(Dataset):
         :param dataset_source_root_files_dir: Data should be stored in this directory. Should have sub directories for the classes.
         :param dataset_dest_root_dir: Destination for h5 and csv file. If csv file is already existing process is resumed with existing file unless overwrite is set true.
         :param dataset_sub_batch_size: Number of Samples padded and batched together. The smaller the number the slower the loading and vice versa.
-        :param filename_to_metadata_func: Function that extracts meta data from image names.
+        :param filename_to_metadata_func: Function that extracts meta data from samples names.
         :param overwrite_existing: If true, meta data and existing h5 are overwritten. If not meta is reused.
         :param no_class_dirs: Classes are provided in subdirs in dataset_source_files_dir or not.
         :return:
@@ -621,7 +635,7 @@ class H5Dataset(Dataset):
 
         if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
             logging.info('Converting raw data files to h5.')
-            H5Dataset.convert_images_to_dataset(dataset_dataframe=metadata,
+            H5Dataset.convert_samples_to_dataset(dataset_dataframe=metadata,
                                                 dataset_destination_h5_file=dataset_h5_file_path,
                                                 sub_batch_size=dataset_sub_batch_size)
             logging.info('Finished converting Files')
