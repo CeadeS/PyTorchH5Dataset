@@ -18,7 +18,7 @@ class TestH5Dataloader(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         with self.assertRaises(AssertionError):
             dataLoader = H5DataLoader(dataset=dataset,
@@ -34,7 +34,7 @@ class TestH5Dataloader(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         dataloader = H5DataLoader(dataset=dataset,
                                   device='cpu:0', batch_size=1,
@@ -60,7 +60,7 @@ class TestH5Dataloader(TestCase):
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
-        H5Dataset.convert_images_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
+        H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         dataLoader = H5DataLoader(dataset=dataset,
                                   device='cpu:0', batch_size=1,
