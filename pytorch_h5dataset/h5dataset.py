@@ -567,7 +567,7 @@ class H5Dataset(Dataset):
             self.script_transform = self.script_transform
             sample = self.script_transform(sample)
 
-        meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no]))
+        meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no], dtype=torch.int64))
         #meta_data = (torch.from_numpy(self.classes[group_no]), torch.from_numpy(self.indices[group_no]))
 
         return sample, meta_data
