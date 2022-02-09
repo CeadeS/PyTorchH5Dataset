@@ -556,18 +556,19 @@ class H5Dataset(Dataset):
         batch_shape = self.batch_shapes[group_no]
         group = self.h5_file[f'samples/{group_no}']
 
-        #sample = torch.as_tensor(self.crop_function(group, *batch_shape))
-
         sample = self.crop_function(group, *batch_shape)  ## FIX for Issue with TIFF uint16 dtypes
         if sample.dtype == np.uint16:
-            sample = sample.astype(int)
-        #sample = torch.from_numpy(sample)
-        sample = torch.as_tensor(sample)
+            #sample = sample.astype(int)
+            sample = torch.from_numpy(sample.astype(int))
+        else:
+            sample = torch.as_tensor(sample)
+        #sample = torch.from_numpy(sample) ## from_numpy causes Error when do device is called with cuda
+
         if self.script_transform is not None:
             self.script_transform = self.script_transform
             sample = self.script_transform(sample)
 
-        meta_data = (torch.as_tensor(self.classes[group_no]), self.indices[group_no])
+        meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no], dtype=torch.int64))
         #meta_data = (torch.from_numpy(self.classes[group_no]), torch.from_numpy(self.indices[group_no]))
 
         return sample, meta_data

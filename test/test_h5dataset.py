@@ -692,6 +692,7 @@ class TestH5Dataset(TestCase):
         H5Dataset.convert_samples_to_dataset(dataframe, './test/data/tmp/dataset/h5/test_dataset.h5')
         dataset = H5Dataset('test_dataset', './test/data/tmp/dataset/h5/')
         sample, (meta_class, meta_indices) = dataset[0]
+        meta_indices = np.array(meta_indices,dtype=int)
         test_meta = dataset.get_meta_data_from_indices(meta_indices)
         gt_meta = dataset.metadata[dataset.metadata['Index'].isin(meta_indices)]
         pd.testing.assert_frame_equal(test_meta, gt_meta)
