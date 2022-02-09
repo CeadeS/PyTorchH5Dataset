@@ -561,13 +561,14 @@ class H5Dataset(Dataset):
         sample = self.crop_function(group, *batch_shape)  ## FIX for Issue with TIFF uint16 dtypes
         if sample.dtype == np.uint16:
             sample = sample.astype(int)
-        sample = torch.from_numpy(sample)
+        #sample = torch.from_numpy(sample)
+        sample = torch.as_tensor(sample)
         if self.script_transform is not None:
             self.script_transform = self.script_transform
             sample = self.script_transform(sample)
 
-        #meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no]))
-        meta_data = (torch.from_numpy(self.classes[group_no]), torch.from_numpy(self.indices[group_no]))
+        meta_data = (torch.as_tensor(self.classes[group_no]), torch.as_tensor(self.indices[group_no]))
+        #meta_data = (torch.from_numpy(self.classes[group_no]), torch.from_numpy(self.indices[group_no]))
 
         return sample, meta_data
 
