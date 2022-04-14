@@ -373,23 +373,21 @@ class TestH5Dataset(TestCase):
     def test_random_crop(self):
         import numpy as np
         from pytorch_h5dataset.fn.blosc import BloscInterface
-        ## crop crop_size given as ints
-        h5_group_dummy = np.random.rand(50,5,300,512)
-        batch_height, batch_width = 300, 512
-        batch_area =batch_height * batch_width
-        crop_size = (None, 300)
+        h5_group_dummy = np.random.rand(50,5,400,512)
+        batch_height, batch_width = 400, 512
+        batch_area = batch_height * batch_width
+        crop_size = (None, 480)
         crop_area_ratio_range = 0.7
         crop = BloscInterface.random_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
         crop_shape = crop.shape[-2:]
         crop_area=np.prod(crop_shape)
-        print(crop.shape)
         self.assertEqual(round(crop_area_ratio_range,1), round(crop_area/batch_area,1))
 
         h5_group_dummy = np.random.rand(50,5,144,244)
         batch_height, batch_width = 144, 244
         batch_area =batch_height * batch_width
         crop_size = (120, None)
-        crop_area_ratio_range = 0.9
+        crop_area_ratio_range = 0.8
         crop = BloscInterface.random_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)
         crop_shape = crop.shape[-2:]
         crop_area=np.prod(crop_shape)
@@ -397,7 +395,7 @@ class TestH5Dataset(TestCase):
 
         h5_group_dummy = np.random.rand(50,5,144,244)
         batch_height, batch_width = 144, 244
-        batch_area =batch_height * batch_width
+        batch_area = batch_height * batch_width
         crop_size = (250, None)
         crop_area_ratio_range = 0.66
         crop = BloscInterface.random_crop(h5_group_dummy, batch_height, batch_width, crop_size, crop_area_ratio_range)

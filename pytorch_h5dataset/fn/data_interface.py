@@ -118,7 +118,6 @@ class DataInterface(metaclass=ABCMeta):
         # crop crop_size completely determined
         if all(isinstance(a, int) for a in crop_size) and len(crop_size) == 2:
             crop_func = mcs._get_fixed_crop_function(crop_size, random_location)
-            print('####1####')
             return crop_func
 
 
@@ -134,10 +133,10 @@ class DataInterface(metaclass=ABCMeta):
                         crop_area_ratio_range = crop_area_ratio_range[0], crop_area_ratio_range[0]
                 else:
                     crop_area_ratio_range = (crop_area_ratio_range, crop_area_ratio_range)
-                crop_func = mcs._get_random_on_side_fixed_crop_function(crop_height,
-                                                                        crop_width,
-                                                                        crop_area_ratio_range,
-                                                                        random_location)
+                crop_func = mcs._get_random_one_side_fixed_crop_function(crop_height,
+                                                                         crop_width,
+                                                                         crop_area_ratio_range,
+                                                                         random_location)
                 return crop_func
 
             # crop crop_size is given by a range of ints or a single int value
@@ -171,16 +170,13 @@ class DataInterface(metaclass=ABCMeta):
         :param crop_size: crop crop_size can be a tuple of ints or a float. Tuple of ints -> cropped crop_size. Float -> cropped area ratio
         :return: crop function
         """
-        print('MSC', mcs)
         if all(isinstance(a, int) for a in crop_size):
-            print('ZZZZZZZZZZZ1ZZZZZZZZZZZ')
             def func(sub_batch):
                 return mcs.center_crop(sub_batch, batch_height=sub_batch.shape[-2],
                                                  batch_width=sub_batch.shape[-1],
                                                  crop_height=crop_size[0], crop_width=crop_size[1])
 
         elif isinstance(crop_size, float):
-            print('ZZZZZZZZZZZ2ZZZZZZZZZZZ')
             def func(sub_batch):
                 batch_height = sub_batch.shape[-2]
                 batch_width = sub_batch.shape[-1]
@@ -238,7 +234,8 @@ class DataInterface(metaclass=ABCMeta):
 
         h_begin = (batch_height - crop_height) // 2
         w_begin = (batch_width - crop_width) // 2
-        return w_begin, h_begin, w_begin+crop_width, h_begin+crop_height
+
+        return h_begin, w_begin,  h_begin+crop_height, w_begin+crop_width,
 
     @staticmethod
     #@final
@@ -319,22 +316,18 @@ class DataInterface(metaclass=ABCMeta):
         :param batch_width:
         :return:
         """
-        print(crop_width, crop_height)
         for _ in range(10):
             target_area = batch_height * batch_width * empty(1).uniform_(*crop_area_ratio_range).item()
             if crop_height is None:
                 crop_height = int(target_area / crop_width)
-                print(crop_height)
             elif crop_width is None:
                 crop_width = int(target_area / crop_height)
-            print("crop_args", crop_width, crop_height)
             if 0 < crop_height <= batch_height and 0 < crop_width <= batch_width:
                 if random_location:
                     h_begin = randint(0, batch_height - crop_height + 1, size=(1,)).item()
                     w_begin = randint(0, batch_width - crop_width + 1, size=(1,)).item()
                 else:
                     h_begin, w_begin = (batch_height - crop_height) // 2, (batch_width - crop_width) // 2
-                print("Return_Value", h_begin, w_begin, h_begin + crop_height, w_begin + crop_width)
                 return h_begin, w_begin, h_begin + crop_height, w_begin + crop_width
         # Fallback to central crop
         return DataInterface.get_central_crop_args(batch_width, batch_height, crop_area_ratio_range)
@@ -351,7 +344,7 @@ class DataInterface(metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def _get_random_on_side_fixed_crop_function(crop_height, crop_width, crop_area_ratio_range, random_location):
+    def _get_random_one_side_fixed_crop_function(crop_height, crop_width, crop_area_ratio_range, random_location):
         raise NotImplementedError
 
     @staticmethod

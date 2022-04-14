@@ -105,9 +105,9 @@ class ImageInterface(DataInterface):
         return crop_func
 
     @staticmethod
-    def _get_random_on_side_fixed_crop_function(crop_height,
-                                                crop_width,
-                                                crop_area_ratio_range, random_location=True):
+    def _get_random_one_side_fixed_crop_function(crop_height,
+                                                 crop_width,
+                                                 crop_area_ratio_range, random_location=True):
         def crop_func(sub_batch, batch_height=None, batch_width=None):
             heights, widths = ImageInterface.get_sub_batch_shapes(sub_batch)
             h_offsets, h_ends, w_offsets, w_ends = [], [], [], []

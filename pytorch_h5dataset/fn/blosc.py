@@ -110,11 +110,10 @@ class BloscInterface(DataInterface):
         return crop_func
 
     @staticmethod
-    def _get_random_on_side_fixed_crop_function(crop_height,
-                                                crop_width,
-                                                crop_area_ratio_range, random_location):
+    def _get_random_one_side_fixed_crop_function(crop_height,
+                                                 crop_width,
+                                                 crop_area_ratio_range, random_location=True):
         def crop_func(sub_batch, batch_height, batch_width):
-            print(crop_height, crop_width, crop_area_ratio_range, random_location)
             # Issue with uint16 dtype when loading shape from dataset
             if isinstance(batch_width, np.uint16):
                 batch_height, batch_width = int(batch_height), int(batch_width)
@@ -147,7 +146,7 @@ class BloscInterface(DataInterface):
         return crop_func
 
     @staticmethod
-    def _get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size, random_location):
+    def _get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size, random_location=True):
         if isinstance(crop_area_ratio_range, tuple):
             if len(crop_area_ratio_range) < 2:
                 crop_area_ratio_range = crop_area_ratio_range[0], crop_area_ratio_range[0]
