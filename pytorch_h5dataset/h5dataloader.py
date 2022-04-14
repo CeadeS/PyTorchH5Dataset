@@ -73,4 +73,4 @@ class H5DataLoader(object):
         self.dataset.script_transform = None
 
     def __len__(self):
-        return ceil(self.dataset.num_samples/self.batch_size)
+        return ceil(self.dataset.num_samples / self.batch_size)
