@@ -48,7 +48,7 @@ pip install -e .
 ```python
 import pytorch_h5dataset
 
-d = pytorch_h5dataset.H5Dataset.create_dataset(
+d = pytorch_h5dataset._H5Dataset.create_dataset(
     "some_name",
     "some/dir/containing/data",
     "output/dir",
@@ -69,13 +69,13 @@ from numpy import prod
 
 norm = script(NormImage()).cuda()
 
-from pytorch_h5dataset import H5Dataset
+from pytorch_h5dataset import _H5Dataset
 from pytorch_h5dataset import H5DataLoader
 
 batch_size = 100
 epochs = 100
 device = 'cuda:0'
-dataset = H5Dataset(dataset_name="test_dataset",
+dataset = _H5Dataset(dataset_name="test_dataset",
                     dataset_root="path/to/dataset",  # empl: '../test/data/tmp/dataset/h5',
                     transforms=Resize((244, 244)),
                     loading_crop_size=(0.73, 1.33),  # cropped aspect ratio

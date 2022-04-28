@@ -3,6 +3,7 @@ import numpy as np
 from math import sqrt
 import imghdr
 from .data_interface import DataInterface
+from torch import as_tensor, uint8
 
 
 class BloscInterface(DataInterface):
@@ -93,7 +94,7 @@ class BloscInterface(DataInterface):
     def _get_fixed_crop_function(crop_size, random_location=True):
         crop_height, crop_width = crop_size
 
-        def crop_func(sub_batch, batch_height, batch_width):
+        def crop_func(sub_batch, batch_height, batch_width, shapes=None):
             # Issue with uint16 dtype when loading shape from dataset
             if isinstance(batch_width, np.uint16):
                 batch_height, batch_width = int(batch_height), int(batch_width)
@@ -113,7 +114,7 @@ class BloscInterface(DataInterface):
     def _get_random_one_side_fixed_crop_function(crop_height,
                                                  crop_width,
                                                  crop_area_ratio_range, random_location=True):
-        def crop_func(sub_batch, batch_height, batch_width):
+        def crop_func(sub_batch, batch_height, batch_width, shapes=None):
             # Issue with uint16 dtype when loading shape from dataset
             if isinstance(batch_width, np.uint16):
                 batch_height, batch_width = int(batch_height), int(batch_width)
@@ -130,7 +131,7 @@ class BloscInterface(DataInterface):
 
     @staticmethod
     def _get_random_fixed_area_crop(crop_area_ratio_range, crop_size, random_location=True):
-        def crop_func(sub_batch, batch_height, batch_width):
+        def crop_func(sub_batch, batch_height, batch_width, shapes=None):
             # Issue with uint16 dtype when loading shape from dataFset
             if isinstance(batch_width, np.uint16):
                 batch_height, batch_width = int(batch_height), int(batch_width)
@@ -153,7 +154,7 @@ class BloscInterface(DataInterface):
         else:
             crop_area_ratio_range = (crop_area_ratio_range, crop_area_ratio_range)
 
-        def crop_func(sub_batch, batch_height, batch_width):
+        def crop_func(sub_batch, batch_height, batch_width, shapes=None):
             # Issue with uint16 dtype when loading shape from dataset
             if isinstance(batch_width, np.uint16):
                 batch_height, batch_width = int(batch_height), int(batch_width)
@@ -167,7 +168,7 @@ class BloscInterface(DataInterface):
         return crop_func
 
     @staticmethod
-    def center_crop(sub_batch, batch_height, batch_width, crop_height, crop_width):
+    def center_crop(sub_batch, batch_height, batch_width, crop_height, crop_width, shapes=None):
         beg_idx_1 = max(0, (batch_height - crop_height) // 2)
         end_idx_1 = beg_idx_1 + crop_height
         beg_idx_2 = max(0, (batch_width - crop_width) // 2)
@@ -175,12 +176,12 @@ class BloscInterface(DataInterface):
         return sub_batch[..., beg_idx_1:end_idx_1, beg_idx_2:end_idx_2]
 
     @staticmethod
-    def center_crop_as_tensor(sub_batch, batch_width, batch_height, crop_width, crop_height):
-        ret = BloscInterface.center_crop(sub_batch, batch_width, batch_height, crop_width, crop_height)
+    def center_crop_as_tensor(sub_batch, batch_width, batch_height, crop_width, crop_height, shapes=None):
+        ret = BloscInterface.center_crop(sub_batch, batch_width, batch_height, crop_width, crop_height, shapes=None)
         return torch.as_tensor(ret)
 
     @staticmethod
-    def crop_original_samples_from_batch(batch, shapes):
+    def crop_original_samples_from_batch(batch, shapes, batch_height = None, batch_width = None):
         batch_shape = batch[0].shape
         imlist = []
         for idx, sample_shape in enumerate(shapes):
@@ -190,3 +191,18 @@ class BloscInterface(DataInterface):
             end_idx_2 = beg_idx_2 + sample_shape[-1]
             imlist.append(batch[idx, :, beg_idx_1:end_idx_1, beg_idx_2:end_idx_2])
         return imlist
+
+    from torch import from_numpy
+    @staticmethod
+    def sub_batch_list_as_tensor(sub_batch: [np.array], device=torch.device('cpu'), torch_dtype = uint8, np_dtype=np.dtype('uint8')):
+        for i in range(len(sub_batch)):
+            sub_batch[i] = as_tensor(sub_batch[i].astype(np_dtype, copy=False),
+                                     dtype=torch_dtype,
+                                     device=torch.device(device))
+        return sub_batch
+
+    @staticmethod
+    def sub_batch_array_as_tensor(sub_batch: [np.array], device=torch.device('cpu'), torch_dtype = uint8, np_dtype=np.dtype('uint8')):
+        return as_tensor(sub_batch.astype(np_dtype, copy=False),
+                         dtype=torch_dtype,
+                         device=torch.device(device))

@@ -3,8 +3,10 @@
 ## TODO Store Lists of vlen strings of jpegs directly into hdf5
 from jpegtran import lib
 
-
 from simplejpeg import encode_jpeg as encode
+from simplejpeg import decode_jpeg as jpeg_decode
+from torchvision.io import decode_image as torch_decode
+from torch import as_tensor, uint8
 
 import torch
 
@@ -59,16 +61,22 @@ class ImageInterface(DataInterface):
         else:
             crop_area_ratio_range = (crop_area_ratio_range, crop_area_ratio_range)
 
-        def crop_func(sub_batch, batch_height, batch_width):
-            # Issue with uint16 dtype when loading shape from dataset
-            if isinstance(batch_width, np.uint16):
-                batch_height, batch_width = int(batch_height), int(batch_width)
-            h_offset, w_offset, h_end, w_end = \
-                ImageInterface.get_random_crop_args_within_ratio_range_given_crop_size_ratio(crop_size,
-                                                                                             crop_area_ratio_range,
-                                                                                             batch_height,
-                                                                                             batch_width, random_location)
-            return ImageInterface.crop(sub_batch, h_offset, h_end, w_offset, w_end)
+        def crop_func(sub_batch, batch_height=None, batch_width=None):
+            heights, widths = ImageInterface.get_sub_batch_shapes(sub_batch)
+            h_offsets, h_ends, w_offsets, w_ends = [], [], [], []
+            for i in range(len(sub_batch)):
+                batch_width, batch_height = int(widths[i]), int(heights[i])
+                h_offset, w_offset, h_end, w_end = \
+                    ImageInterface.get_random_crop_args_within_ratio_range_given_crop_size_ratio(crop_size,
+                                                                                                 crop_area_ratio_range,
+                                                                                                 batch_height,
+                                                                                                 batch_width,
+                                                                                                 random_location)
+                h_offsets.append(h_offset)
+                w_offsets.append(w_offset)
+                h_ends.append(h_end)
+                w_ends.append(w_end)
+                return ImageInterface.crop(sub_batch, h_offsets, h_ends, w_offsets, w_ends)
 
         return crop_func
 
@@ -118,7 +126,8 @@ class ImageInterface(DataInterface):
                                                                                             crop_width,
                                                                                             crop_area_ratio_range,
                                                                                             batch_height,
-                                                                                            batch_width, random_location)
+                                                                                            batch_width,
+                                                                                            random_location)
                 h_offsets.append(h_offset)
                 w_offsets.append(w_offset)
                 h_ends.append(h_end)
@@ -164,28 +173,39 @@ class ImageInterface(DataInterface):
         return result
 
     @staticmethod
-    def random_rotation(sub_batch: [bytes], angle=(-12, 12)):
-        result = [range(len(sub_batch))]
+    def random_rotation(sub_batch: [bytes], angles=(90,)):
+        rands = torch.randint(len(angles), (len(sub_batch),))
+
+        result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            result[i] = lib.Transformation.rotate(sub_batch[i], angle)
+            angle = angles[rands[i].item()]
+            if angle != 0:
+                result[i] = lib.Transformation(sub_batch[i]).rotate(angle)
+            else:
+                result[i] = sub_batch[i]
+
         return result
 
     @staticmethod
     def random_h_flip(sub_batch: [bytes]):
-        result = [range(len(sub_batch))]
+        result = list(range(len(sub_batch)))
         r = torch.randint(2, size=(len(sub_batch),))
         for i in range(len(sub_batch)):
             if r[i].item() == 1:
-                result[i] = lib.Transformation.flip(sub_batch[i], direction='horizontal')
+                result[i] = lib.Transformation(sub_batch[i]).flip(direction='horizontal')
+            else:
+                result[i] = sub_batch[i]
         return result
 
     @staticmethod
     def random_v_flip(sub_batch: [bytes]):
-        result = [range(len(sub_batch))]
+        result = list(range(len(sub_batch)))
         r = torch.randint(2, size=(len(sub_batch),))
         for i in range(len(sub_batch)):
             if r[i].item() == 1:
-                result[i] = lib.Transformation.flip(sub_batch[i], direction='vertical')
+                result[i] = lib.Transformation(sub_batch[i]).flip(direction='vertical')
+            else:
+                result[i] = sub_batch[i]
         return result
 
     @staticmethod
@@ -194,6 +214,7 @@ class ImageInterface(DataInterface):
                                                            int), "Wrong Datatype for crop_height or crop_width"
         assert isinstance(sub_batch, list) and len(sub_batch) > 0 and isinstance(sub_batch[0], bytes), "" \
                                                                                                        "Sub Batch must be a List containing bytes"
+
         result = [range(len(sub_batch))]
         for i in range(len(sub_batch)):
             beg_idx_1 = max(0, (100 - crop_height) // 2)
@@ -202,3 +223,45 @@ class ImageInterface(DataInterface):
             result[i] = lib.Transformation(sub_batch[i]).crop(beg_idx_2, beg_idx_1, min(crop_width, width),
                                                               min(crop_height, height))
         return result
+
+    @staticmethod
+    def random_scale(sub_batch: [bytes], scale_range=(0.8, 1.33), quality=83):
+        result = list(range(len(sub_batch)))
+        rands = torch.FloatTensor(len(sub_batch)).uniform_(*scale_range)
+        width, height = [], []
+        for i in range(len(sub_batch)):
+            _width, _height = lib.Transformation(sub_batch[i]).get_dimensions()
+            width.append(int(rands[i].item() * _width))
+            height.append(int(rands[i].item() * _height))
+        for i in range(len(sub_batch)):
+            result[i] = lib.Transformation(sub_batch[i]).scale(width[i], height[i], quality)
+        return result
+
+    @staticmethod
+    def scale(sub_batch: [bytes], heights: [int], widths: [int], quality=83):
+        if isinstance(widths, int) and isinstance(widths, int):
+            widths = [widths] * len(sub_batch)
+            heights = [heights] * len(sub_batch)
+        result = list(range(len(sub_batch)))
+        for i in range(len(sub_batch)):
+            result[i] = lib.Transformation(sub_batch[i]).scale(widths[i], heights[i], quality)
+        return result
+
+    @staticmethod
+    def sub_batch_as_tensor(sub_batch: [bytes], device=torch.device('cpu')):
+        for i in range(len(sub_batch)):
+            sub_batch[i] = as_tensor(sub_batch[i], dtype=uint8, device=torch.device(device))
+        return sub_batch
+
+    @staticmethod
+    def decode(bytes_obj, device='cpu'):
+        if torch.device('cuda').type == torch.device(device).type:
+            return torch_decode(bytes_obj)
+        else:
+            return np.moveaxis(jpeg_decode(bytes_obj), -1, 0)
+
+    @staticmethod
+    def sub_batch_decode(sub_batch: [bytes], device='cpu'):
+        for i in range(len(sub_batch)):
+            sub_batch[i] = ImageInterface.decode(sub_batch[i], device=device)
+        return sub_batch

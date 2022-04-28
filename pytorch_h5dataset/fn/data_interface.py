@@ -1,10 +1,10 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from typing import final
 from math import sqrt
 from torch import log, tensor, randint, empty, exp
 
 
-class DataInterface(metaclass=ABCMeta):
+class DataInterface(ABC):
 
     @classmethod
     @final
@@ -142,12 +142,12 @@ class DataInterface(metaclass=ABCMeta):
             # crop crop_size is given by a range of ints or a single int value
             # and the crop_area_ratio_range is given as float or tuple of floats
             elif all(isinstance(a, int) for a in crop_size) or isinstance(crop_size, int):
-                return mcs._get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size)
+                return mcs._get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size, random_location)
 
             # crop crop_size is given by a range of floats or a single float value
             # and the crop_area_ratio_range is given as float value or tuple of floats
             elif all(isinstance(a, float) for a in crop_size) or isinstance(crop_size, float):
-                return mcs._get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size)
+                return mcs._get_crop_by_range_or_value_function(crop_area_ratio_range, crop_size, random_location)
             else:
                 raise NotImplementedError
         elif isinstance(crop_area_ratio_range, int):
@@ -264,11 +264,10 @@ class DataInterface(metaclass=ABCMeta):
                     w_begin = randint(0, batch_width - crop_width + 1, size=(1,)).item()
                     return h_begin, w_begin, h_begin + crop_height, w_begin + crop_width
             else:
-                h_begin = min(0, batch_height - crop_height // 2)
-                w_begin = min(0, batch_width - crop_width // 2)
-                return h_begin, w_begin, max(h_begin + batch_height), crop_height, max(w_begin + crop_width,
-                                                                                       batch_width)
-
+                h_begin = max(0, (batch_height - crop_height) // 2)
+                w_begin = max(0, (batch_width - crop_width) // 2)
+                return h_begin, w_begin, min(h_begin + crop_height, batch_height), min(w_begin + crop_width,
+                                                                                           batch_width)
         # Fallback to central crop
 
         return DataInterface.get_central_crop_args(batch_width, batch_height, crop_area_ratio_range)

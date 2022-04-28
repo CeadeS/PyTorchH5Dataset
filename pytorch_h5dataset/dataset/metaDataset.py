@@ -1,3 +1,5 @@
+from abc import ABC, ABCMeta, abstractmethod
+from typing import final
 from torch.utils.data import Dataset
 import numpy as np
 import h5py, hdf5plugin, tables  # fixes plugins not found Exceptions
@@ -10,8 +12,8 @@ import pandas as pd
 import random
 import logging
 import difflib
-from .fn.blosc import BloscInterface
-from .fn.image import ImageInterface
+from ..fn.blosc import BloscInterface
+from ..fn.image import ImageInterface
 from math import floor
 
 #TODO
@@ -22,9 +24,10 @@ from random import shuffle
 from time import time
 
 
-class H5Dataset(Dataset):
+class H5MetaDataset(Dataset, ABC):
 
     @staticmethod
+    @final
     def load_sample(row, data_interface = BloscInterface): ## returns object with shape
         return data_interface.load_sample(row)
 
@@ -49,8 +52,13 @@ class H5Dataset(Dataset):
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
                     logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
+
     @staticmethod
-    def tar_dir_to_hdf5_dataset(tar_root_in_dir = 'ILSVRC2012_img_train', root_hdf5_out_dir = 'ILSVRC2012_img_train_h5' ,dataset_name = 'imagenet_meta'):
+    @final
+    def tar_dir_to_hdf5_dataset(tar_root_in_dir = 'ILSVRC2012_img_train',
+                                root_hdf5_out_dir = 'ILSVRC2012_img_train_h5',
+                                dataset_name = 'imagenet_meta', shuffle_tar_data = False):
+
         tar_files_list = os.listdir(tar_root_in_dir)
         tar_file_contents_names = []
         for tar_file_name in tar_files_list:
@@ -58,19 +66,22 @@ class H5Dataset(Dataset):
             if tarfile.is_tarfile(file):
                 with tarfile.open(file,"r") as tf:
                     tar_file_contents_names.extend(((n,tar_file_name[:-4]) for n in tf.getnames()))
-        shuffle(tar_file_contents_names)
 
-        H5Dataset.write_tar_file_data_to_hdf5(root_hdf5_out_dir,tar_file_contents_names,
-                                              hdf5_file_name=f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5")
+        if shuffle_tar_data:
+            shuffle(tar_file_contents_names)
+
+        H5MetaDataset.write_tar_file_data_to_hdf5(root_hdf5_out_dir, tar_file_contents_names,
+                                               hdf5_file_name=f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5")
         df = pd.DataFrame(tar_file_contents_names, columns=['file_name','class'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
 
 
 
     @staticmethod
-    def convert_samples_to_dataset(dataset_dataframe,
-                                  dataset_destination_h5_file='./data/test_dataset.h5',
-                                  sub_batch_size=50, data_mode = 'blosc', max_n_group= 10):
+    @final
+    def _convert_samples_to_dataset(dataset_dataframe,
+                                   dataset_destination_h5_file='./data/test_dataset.h5',
+                                   sub_batch_size=50, data_mode = 'blosc', max_n_group= 10):
         from pathlib import Path
         """
         Read all samples from the FilePath read from each row of a pandas dataframe and add them to a h5 dataset file.
@@ -96,7 +107,7 @@ class H5Dataset(Dataset):
         for idx in range(len(dataset_dataframe)):
 
             row = dataset_dataframe.loc()[idx]
-            im, im_shape = H5Dataset.load_sample(row, data_interface)
+            im, im_shape = H5MetaDataset.load_sample(row, data_interface)
 
 
             if not (isinstance(im, np.ndarray) or isinstance(im, bytes)):
@@ -139,12 +150,13 @@ class H5Dataset(Dataset):
                         group_key = str(idx//max_n_group)
                         h5_file.create_group(group_key)
                     h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch, dtype=batch.dtype,
-                                           **data_interface.blosc_opts(9, 'blosc:blosclz', 'bit'))
+                                                      **data_interface.blosc_opts(9, 'blosc:blosclz', 'bit'))
                     classes_list.append(np.array(classes, dtype=np.dtype('uint16')))
                     shapes_list.append(np.array(shapes, dtype=np.dtype('uint16')))
                     indices_list.append(np.array(indices, dtype=np.dtype('uint32')))
                     batch_shapes_list.append(np.array(batch.shape, dtype=np.dtype('uint16')))
                     num_samples+=len(batch)
+                data_dtype = batch[0].dtype
             elif data_mode == 'image':
                 for idx, (batch, classes, shapes, indices) in enumerate(
                         data_interface.batchify_sample_data_list(sample_data_list, batch_size=sub_batch_size)):
@@ -158,6 +170,8 @@ class H5Dataset(Dataset):
                     indices_list.append(np.array(indices, dtype=np.dtype('uint32')))
                     batch_shapes_list.append(__shapes.max(axis=1))
                     num_samples+=len(batch)
+                data_dtype = str(bytes)
+
             h5_file.attrs['classes'] =np.stack(classes_list)
             h5_file.attrs['shapes'] =np.stack(shapes_list)
             h5_file.attrs['indices'] =np.stack(indices_list)
@@ -165,12 +179,14 @@ class H5Dataset(Dataset):
             h5_file.attrs['max_idx'] = int(idx)
             h5_file.attrs['num_samples'] = int(num_samples)
             h5_file.attrs['max_n_group'] = int(max_n_group)
-            h5_file.attrs['data_mode'] = data_mode
+            h5_file.attrs['data_mode'] = str(data_mode)
+            h5_file.attrs['data_dtype'] = str(data_dtype)
             h5_file.attrs['sub_batch_size'] = int(sub_batch_size)
 
 
 
     @staticmethod
+    @final
     def create_metadata_for_dataset(raw_files_dir, filename_to_metadata_func=None, no_classes=False):
         """
         Function returns pandas dataframe with meta_data from a directory recusively crawling sub directories.
@@ -229,60 +245,39 @@ class H5Dataset(Dataset):
                 break
         return pd.DataFrame(datalist)
 
+    @final
     def __len__(self):
         return self.max_idx+1
 
-    def __getitem__(self, sub_batch_idx): ##TODO to_device ?
-        sub_batch_idx = self.group_number_mapping[sub_batch_idx]
-        group_no = str(sub_batch_idx//self.max_n_group)
-        dataset_no = str(sub_batch_idx%self.max_n_group)
-        ## TODO ab hier weiter
-        if self.crop_function is None:
-            if 'random' in self.crop_strategy:
-                if 'center' in self.crop_strategy:
-                    self.crop_function = self.data_interface.get_random_center_crop_function(crop_size=self.crop_size, crop_area_ratio_range=self.crop_area_ratio_range)
-                else:
-                    self.crop_function = self.data_interface.get_random_crop_function(
-                        crop_size=self.crop_size, crop_area_ratio_range=self.crop_area_ratio_range)
-            elif self.crop_strategy == 'center':
-                self.crop_function = self.data_interface.get_center_crop_function(crop_size=self.crop_size)
-            elif self.crop_strategy == 'original':
-                self.crop_function = self.data_interface.crop_original_samples_from_batch()
-            else:
-                self.crop_function = 'none'
+    def __getitem__(self, sub_batch_idx):
+        """
+        Returns a  Tuple of data:h5_file object and (classes:tensor, index:tensor)
+        :param sub_batch_idx:
+        :return:
+        """
+
+        sub_batch_slice = None
+        if isinstance(sub_batch_idx, tuple) and (isinstance(sub_batch_idx[1], int) or isinstance(sub_batch_idx[1], slice)):
+            sub_batch_idx, sub_batch_slice = sub_batch_idx
+            if isinstance(sub_batch_slice, int):
+                sub_batch_slice = slice(sub_batch_slice,sub_batch_slice+1)
+
         if self.h5_file is None:
             self.h5_file = h5py.File(self.dataset_h5_file_path, "r")
 
-        if self.transforms is not None and isinstance(self.transforms, torch.nn.Module):
-            self.script_transform = torch.jit.script(self.transforms)
+        sub_batch_idx = self.group_number_mapping[sub_batch_idx]
+        group_no = str(sub_batch_idx//self.max_n_group)
+        dataset_no = str(sub_batch_idx%self.max_n_group)
 
         sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
-        batch_shape = self.batch_shapes[sub_batch_idx][-2:]
-        if self.crop_strategy == 'original':
-            sample = self.crop_function(sub_batch, self.batch_shapes[sub_batch_idx])  ## FIX for Issue with TIFF uint16 dtypes
-        elif self.crop_function == 'none':
-            pass
-        else:
-            sample = self.crop_function(sub_batch, *batch_shape)  ## FIX for Issue with TIFF uint16 dtypes
-        if isinstance(sample, list):
-            for i in range(len(sample)):
-                pass
-                #sample[i] = torch.from_numpy(np.frombuffer(sample[i], dtype=np.uint8))
-        else:
-            if sample.dtype == np.uint16:
-                sample = torch.from_numpy(sample.astype(int))
-            else:
-                sample = torch.as_tensor(sample)
-
-        if self.script_transform is not None:
-            self.script_transform = self.script_transform
-            sample = self.script_transform(sample)
-
         meta_data = (torch.as_tensor(self.classes[sub_batch_idx]),
                      torch.as_tensor(self.indices[sub_batch_idx]))
 
-        return sample, meta_data
+        if sub_batch_slice is not None:
+            return sub_batch[sub_batch_slice], (meta_data[0][sub_batch_slice], meta_data[1][[sub_batch_slice]])
+        return sub_batch, meta_data
 
+    @final
     def get_meta_data_from_indices(self, indices):
         """
         Returns the metadata from the dataframe given indices as np.array
@@ -290,24 +285,10 @@ class H5Dataset(Dataset):
         :return:
         """
         return self.metadata[self.metadata['Index'].isin(np.array(indices,dtype=np.int64))]
-        #return self.metadata[self.metadata['Index'].isin(np.array(indices,dtype=int))]
-
-    def initiate_crop_function(self):
-        """
-        Is called after loading the first batch. Fixes problem with worker processes that are unable to pickle self.crop_function
-        :param loading_crop_size:
-        :param loading_crop_area_ratio_range:
-        :return:
-        """
-        random_location = 'center' not in self.crop_strategy
-        logging.info("called initiate crop function")
-        self.crop_function = self.data_interface.get_random_crop_function(
-            crop_size=self.crop_size,
-            crop_area_ratio_range=self.crop_area_ratio_range,
-            random_location=random_location)
 
 
     @staticmethod
+    @final
     def create_dataset(
             dataset_name,
             dataset_source_root_files_dir,
@@ -349,7 +330,7 @@ class H5Dataset(Dataset):
 
         if not os.path.exists(metadata_file_path) or overwrite_existing:
             logging.info('Creating meta data file.')
-            metadata = H5Dataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func, no_class_dirs)
+            metadata = H5MetaDataset.create_metadata_for_dataset(dataset_source_root_files_dir, filename_to_metadata_func, no_class_dirs)
             metadata.to_csv(metadata_file_path)
             logging.info("Finished creating meta data file.")
         else:
@@ -358,50 +339,44 @@ class H5Dataset(Dataset):
 
         if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
             logging.info('Converting raw data files to h5.')
-            H5Dataset.convert_samples_to_dataset(dataset_dataframe=metadata,
-                                                dataset_destination_h5_file=dataset_h5_file_path,
-                                                sub_batch_size=dataset_sub_batch_size, data_mode=data_mode)
+            H5MetaDataset.convert_samples_to_dataset(dataset_dataframe=metadata,
+                                                  dataset_destination_h5_file=dataset_h5_file_path,
+                                                  sub_batch_size=dataset_sub_batch_size, data_mode=data_mode)
             logging.info('Finished converting Files')
 
+    @final
     def get_group_number_mapping(self):
         sample_index = list(range(len(self)))
         if self.split_mode == 'montecarlo': ## select random subset
             random.Random(self.split_number).shuffle(sample_index)
             split_size = int(self.split_ratio * len(sample_index))
             selected_samples_index_map = sample_index[0:split_size]
-        if self.split_mode == 'full':
+        elif self.split_mode == 'full':
             split_size = int(self.split_ratio * len(sample_index))
             selected_samples_index_map = sample_index[:split_size]
-        if self.split_mode in ['split', 'cross_val']:
+        elif self.split_mode in ['split', 'cross_val']:
             split_begin = round(sum(self.split_ratio[0:self.split_number])*len(sample_index))
             split_end = round((1-sum(self.split_ratio[self.split_number+1:]))*len(sample_index))
             selected_samples_index_map = sample_index[split_begin:split_end]
+        else:
+            raise ValueError(f"{self.split_mode} not supported")
         return selected_samples_index_map
 
     def __init__(self,
                  dataset_name='dataset_name',
                  dataset_root='/path/to/dataset',
-                 crop_strategy = 'random',
-                 loading_crop_size=(0.73, 1.33),
-                 loading_crop_area_ratio_range=244 * 244,
-                 transforms=None,
                  split_mode = 'full',
                  split_ratio = 1.0,
                  split_number = 0,
-                 return_type = 'image',
-                 device = 'cpu',
                  ):
         """
         Constructor of the Dataset.
 
         :param dataset_name: Name of the datset files.
         :param dataset_root: Path to the dataset folder.
-        :param crop_strategy: Crop Strategy can be center, random, random_center or original.
+
         Center returns a center crop, random a random sized crop and
         random_center a random sized center crop - original performs no cropping.
-        :param loading_crop_size: Crop crop_size aspect ratio range - see random_located_sized_crop_function().
-        :param loading_crop_area_ratio_range: Number of values cropped from sample OR range of cropped values proportion.
-        :param transforms: torchvision.transforms instance, Module or Transform. Module is not pickable after first iteration if Modules are used. Instantiate Dataloaders before first iteration!!
         :param split_mode: Determine the data split. ;must be in ['full', 'montecarlo', 'cross_val', split']
         :param split_ratio: float setting the percentage that is split for training if split_mode is full or montecarlo - int if split_mode is cross_val determining the number of splits, tuple of floats if mode is split
         :param split_number: int. for montecarlo this is the random seed
@@ -425,29 +400,22 @@ class H5Dataset(Dataset):
             assert isinstance(split_number, int) and split_number in range(len(split_ratio)), f"The 'split_number' must be an integer selecting a split percentage in 'split_ratio'"
         else:
             raise ValueError(f'Unsupported variable combination. This should not happen.')
-        assert crop_strategy is None or crop_strategy.lower() in ['random', 'random_center', 'center', 'original', 'none']
 
-
-
-
-        super(H5Dataset, self).__init__()
+        super(H5MetaDataset, self).__init__()
 
         self.dataset_h5_file_path = dataset_h5_file_path
         self.metadata_file_path = metadata_file_path
-        self.crop_size = loading_crop_size
-        self.crop_area_ratio_range = loading_crop_area_ratio_range
 
-        self.crop_function = None
+        self.shapes = []
         self.batch_shapes = []
         self.classes = []
         self.indices = []
-        self.transforms = transforms
-        self.script_transform = None
+
         self.metadata = pd.read_csv(metadata_file_path)
         self.split_mode = split_mode.lower()
         self.split_ratio = split_ratio
         self.split_number = split_number
-        self.crop_strategy = crop_strategy.lower()
+
 
 
         with h5py.File(self.dataset_h5_file_path, "r") as h5_file:
@@ -456,12 +424,12 @@ class H5Dataset(Dataset):
             self.indices = h5_file.attrs['indices'][()].astype(int)
             self.num_sub_batches = len(self.indices)
             self.batch_shapes = h5_file.attrs['batch_shapes'][()]
+            self.shapes = h5_file.attrs['shapes'][()]
             self.classes = h5_file.attrs['classes'][()].astype(int)
             self.sub_batch_size = h5_file.attrs['sub_batch_size']
             self.max_idx = h5_file.attrs['max_idx']
             self.num_samples= h5_file.attrs['num_samples']
-
-
+            self.data_dtype = h5_file.attrs['data_dtype']
 
         self.data_interface = BloscInterface if self.data_mode=='blosc' else ImageInterface
 

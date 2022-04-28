@@ -1,7 +1,7 @@
 from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda
 from torch.utils import data
 from torch.jit import script
-from . import H5Dataset
+from . import _H5Dataset
 from pytorch_h5dataset.utils import NormImage
 from pandas import concat
 from math import ceil
@@ -26,7 +26,7 @@ def collate_samples(sample):
 
 class H5DataLoader(object):
 
-    def __init__(self, dataset: H5Dataset, batch_size=1, device='cpu', num_batches_buffered=10,
+    def __init__(self, dataset: _H5Dataset, batch_size=1, device='cpu', num_batches_buffered=10,
                  shuffle=False, sampler=None,
                  batch_sampler=None, num_workers=0, collate_fn=None,
                  pin_memory=False, drop_last=False, timeout=0,
