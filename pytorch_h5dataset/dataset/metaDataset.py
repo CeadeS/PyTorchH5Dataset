@@ -16,6 +16,7 @@ from ..fn.blosc import BloscInterface
 from ..fn.image import ImageInterface
 from math import floor
 from jpegtran import lib
+from simplejpeg import decode_jpeg as jpeg_decode
 
 #TODO
 #handlers = [logging.FileHandler(filename='data_import.log'),logging.StreamHandler(sys.stdout) ]
@@ -54,6 +55,11 @@ class H5MetaDataset(Dataset, ABC):
                     content_name, tar_file_name, cl, index, _ = tar_file_contents_names[i+j]
                     file_path = os.path.join(tar_root_in_dir, tar_file_name+'.tar')
                     im_bytes = tarfile.open(file_path, "r").extractfile(content_name).read()
+                    try:
+                        jpeg_decode(im_bytes)
+                        print(f"Skipped File {content_name} in {file_path}")
+                    except:
+                        continue
                     d.append(im_bytes)
                     shape = lib.Transformation(im_bytes).get_dimensions()
                     if np.prod(shape) > max_shape_size:
@@ -485,6 +491,12 @@ class H5MetaDataset(Dataset, ABC):
 
 
         self.group_number_mapping =  self.get_group_number_mapping()
+
+
+    def reset(self):
+        if self.h5_file is not None:
+            self.h5_file.close()
+            self.h5_file = None
 
     def __del__(self):
         logging.info("called del")

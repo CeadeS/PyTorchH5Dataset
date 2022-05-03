@@ -1,7 +1,6 @@
 ## TODO USE LIBJPEG TURBO for LOADING
 ## TODO USE JPEGTRAN for augmentation
 ## TODO Store Lists of vlen strings of jpegs directly into hdf5
-import simplejpeg
 from jpegtran import lib
 
 from simplejpeg import encode_jpeg as encode
