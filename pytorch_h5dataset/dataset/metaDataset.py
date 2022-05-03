@@ -90,7 +90,7 @@ class H5MetaDataset(Dataset, ABC):
 
         hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5"
 
-        meta = H5MetaDataset.write_tar_file_data_to_hdf5(root_hdf5_out_dir, tar_file_contents_names,
+        meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_file_contents_names,
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
                                                          max_n_group=max_n_group)
 
@@ -99,6 +99,8 @@ class H5MetaDataset(Dataset, ABC):
         df = pd.DataFrame(tar_file_contents_names, columns=['file_name','class'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
         data_dtype = str(bytes)
+
+
 
 
         with h5py.File(hdf5_file_name, "w") as hdf5_file:
