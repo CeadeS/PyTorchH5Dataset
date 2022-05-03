@@ -53,8 +53,8 @@ class H5MetaDataset(Dataset, ABC):
                     if np.prod(shape) > max_shape_size:
                         max_shape = shape
                         max_shape_size = np.prod(shape)
-                    meta_per_batch.append([cl,shape, index])
-                meta.append(np.array(meta_per_batch.append(max_shape*len(cl))))
+                    meta_per_batch.append([cl,shape, index, max_shape])
+                meta.append(np.array(meta_per_batch))
                 if i%max_n_group==0:
                     group_key = str(i//max_n_group)
                     hdf5_file.create_group(group_key)
