@@ -59,10 +59,10 @@ class H5MetaDataset(Dataset, ABC):
                     if np.prod(shape) > max_shape_size:
                         max_shape = shape
                         max_shape_size = np.prod(shape)
-                    cls_.append(cl),
-                    shapes_.append(shape)
-                    indexes_.append(index)
-                    max_shapes_.append(max_shape)
+                    cls_.append(np.array(cl))
+                    shapes_.append(np.array(shape))
+                    indexes_.append(np.array(index))
+                    max_shapes_.append(np.array(max_shape))
                 meta_cls.append(np.array(cls_))
                 meta_shapes.append(np.array(shapes_))
                 meta_indexes.append(np.array(indexes_))
@@ -104,23 +104,18 @@ class H5MetaDataset(Dataset, ABC):
 
         hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.h5"
 
-        meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_file_contents_names,
+        meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_file_contents_names[:150],
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
                                                max_n_group=max_n_group)
 
-        print(meta)
         classes_list, shapes_list, indices_list, batch_shapes_list = meta
 
         df = pd.DataFrame(tar_file_contents_names, columns=['FileName','Class', 'ClassNo' ,'Index', 'FileType'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
         data_dtype = str(bytes)
 
-
-
-
         with h5py.File(hdf5_file_name, "a") as hdf5_file:
             hdf5_file.attrs['classes'] =np.stack(classes_list)
-            print(np.stack(classes_list))
             hdf5_file.attrs['shapes'] =np.stack(shapes_list)
             hdf5_file.attrs['indices'] =np.stack(indices_list)
             hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
@@ -131,7 +126,8 @@ class H5MetaDataset(Dataset, ABC):
             hdf5_file.attrs['data_dtype'] = str(data_dtype)
             hdf5_file.attrs['sub_batch_size'] = int(sub_batch_size)
 
-
+        print(np.stack(classes_list).shape)
+        print()
 
 
     @staticmethod
