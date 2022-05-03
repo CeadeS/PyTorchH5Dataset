@@ -45,7 +45,7 @@ class H5MetaDataset(Dataset, ABC):
                 max_shape = None
                 max_shape_size = 0
                 for j in range(sub_batch_size):
-                    content_name, tar_file_name, cl, index = tar_file_contents_names[i+j]
+                    content_name, tar_file_name, cl, index, _ = tar_file_contents_names[i+j]
                     file_path = os.path.join(tar_root_in_dir, tar_file_name+'.tar')
                     im_bytes = tarfile.open(file_path,"r").extractfile(content_name).read()
                     d.append(im_bytes)
@@ -81,7 +81,7 @@ class H5MetaDataset(Dataset, ABC):
             if tarfile.is_tarfile(file):
                 with tarfile.open(file,"r") as tf:
                     nnames = tf.getnames()
-                    tar_file_contents_names.extend(((n,tar_file_name[:-4],cl, index+i) for i,n in enumerate(nnames)))
+                    tar_file_contents_names.extend(((n,tar_file_name[:-4],cl, index+i, 'jpeg') for i,n in enumerate(nnames)))
                     index = index + len(nnames)
 
 
@@ -96,7 +96,7 @@ class H5MetaDataset(Dataset, ABC):
 
         classes_list, shapes_list, indices_list, batch_shapes_list = zip(*meta)
 
-        df = pd.DataFrame(tar_file_contents_names, columns=['file_name','class'])
+        df = pd.DataFrame(tar_file_contents_names, columns=['FileName','Class', 'ClassNo' ,'Index', 'FileType'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
         data_dtype = str(bytes)
 
