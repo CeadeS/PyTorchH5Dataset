@@ -80,9 +80,9 @@ class H5MetaDataset(Dataset, ABC):
                     hdf5_file.create_group(group_key)
                 hdf5_file[group_key].create_dataset(f'samples/{str(int(idx%max_n_group))}', data=d)
                 #h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch)
-                print(f"\r{int(i):7d} of {len(tar_file_contents_names)//sub_batch_size:7d} written", end='')
+                print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
-                    logging.info(f"{int(idx):7d} of {len(tar_file_contents_names)//sub_batch_size:7d} written")
+                    logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
                 idx = idx + 1
         return meta_cls, meta_shapes, meta_indexes, meta_max_shapes, idx
 
