@@ -58,7 +58,6 @@ class H5MetaDataset(Dataset, ABC):
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
                     hdf5_file.create_group(group_key)
-                print(str(int(i%max_n_group)))
                 hdf5_file[group_key].create_dataset(f'samples/{str(int(i%max_n_group))}', data=d)
                 #h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch)
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
@@ -71,7 +70,7 @@ class H5MetaDataset(Dataset, ABC):
     def tar_dir_to_hdf5_dataset(tar_root_in_dir = 'ILSVRC2012_img_train',
                                 root_hdf5_out_dir = 'ILSVRC2012_img_train_h5',
                                 dataset_name = 'imagenet_meta', shuffle_tar_data = False, sub_batch_size = 1,
-                                max_n_group= 1e-5):
+                                max_n_group= 1e5):
 
         tar_files_list = os.listdir(tar_root_in_dir)
         tar_file_contents_names = []
