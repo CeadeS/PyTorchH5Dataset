@@ -57,8 +57,8 @@ class H5MetaDataset(Dataset, ABC):
                     im_bytes = tarfile.open(file_path, "r").extractfile(content_name).read()
                     try:
                         jpeg_decode(im_bytes)
-                        print(f"Skipped File {content_name} in {file_path}")
                     except:
+                        print(f"Skipped File {content_name} in {file_path}")
                         continue
                     d.append(im_bytes)
                     shape = lib.Transformation(im_bytes).get_dimensions()
