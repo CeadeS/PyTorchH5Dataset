@@ -36,7 +36,7 @@ class H5MetaDataset(Dataset, ABC):
     @staticmethod
     def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.h5', sub_batch_size=1, max_n_group = int(1e5)):
         no_files = len(tar_file_contents_names)
-        max_n_keys = int(no_files)//sub_batch_size
+        max_n_keys = int(no_files)
         meta_cls = []
         meta_shapes = []
         meta_indexes = []
@@ -84,7 +84,7 @@ class H5MetaDataset(Dataset, ABC):
                 if i % 1000 == 0:
                     logging.info(f"{int(idx):7d} of {len(tar_file_contents_names)//sub_batch_size:7d} written")
                 idx = idx + 1
-        return meta_cls, meta_shapes, meta_indexes, meta_max_shapes
+        return meta_cls, meta_shapes, meta_indexes, meta_max_shapes, idx
 
     @staticmethod
     @final
@@ -116,7 +116,7 @@ class H5MetaDataset(Dataset, ABC):
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
                                                max_n_group=max_n_group)
 
-        classes_list, shapes_list, indices_list, batch_shapes_list = meta
+        classes_list, shapes_list, indices_list, batch_shapes_list, max_idx = meta
 
         df = pd.DataFrame(tar_file_contents_names, columns=['FileName','Class', 'ClassNo' ,'Index', 'FileType'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
@@ -127,7 +127,7 @@ class H5MetaDataset(Dataset, ABC):
             hdf5_file.attrs['shapes'] =np.stack(shapes_list)
             hdf5_file.attrs['indices'] =np.stack(indices_list)
             hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
-            hdf5_file.attrs['max_idx'] = int(len(classes_list))-1
+            hdf5_file.attrs['max_idx'] = max_idx
             hdf5_file.attrs['num_samples'] = int(index)
             hdf5_file.attrs['max_n_group'] = int(max_n_group)
             hdf5_file.attrs['data_mode'] = str('image')
