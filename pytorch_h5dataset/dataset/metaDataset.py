@@ -15,6 +15,7 @@ import difflib
 from ..fn.blosc import BloscInterface
 from ..fn.image import ImageInterface
 from math import floor
+from jpegtran import lib
 
 #TODO
 #handlers = [logging.FileHandler(filename='data_import.log'),logging.StreamHandler(sys.stdout) ]
@@ -35,16 +36,25 @@ class H5MetaDataset(Dataset, ABC):
     def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.hdf5', sub_batch_size=1, max_n_group = int(1e5)):
         no_files = len(tar_file_contents_names)
         max_n_keys = int(no_files)//sub_batch_size
-
+        meta = []
         with h5py.File(hdf5_file_name, "w") as hdf5_file:
             group_key= str(0)
             for i in range(0,max_n_keys,sub_batch_size):
                 d = []
+                meta_per_batch = []
+                max_shape = None
+                max_shape_size = 0
                 for j in range(sub_batch_size):
-                    content_name, tar_file_name = tar_file_contents_names[i+j]
+                    content_name, tar_file_name, cl, index = tar_file_contents_names[i+j]
                     file_path = os.path.join(tar_root_in_dir, tar_file_name+'.tar')
-                    d.append(tarfile.open(file_path,"r").extractfile(content_name).read())
-
+                    im_bytes = tarfile.open(file_path,"r").extractfile(content_name).read()
+                    d.append(im_bytes)
+                    shape = lib.Transformation(im_bytes).get_dimensions()
+                    if np.prod(shape) > max_shape_size:
+                        max_shape = shape
+                        max_shape_size = np.prod(shape)
+                    meta_per_batch.append([cl,shape, index])
+                meta.append(np.array(meta_per_batch.append(max_shape*len(cl))))
                 if i%max_n_group==0:
                     group_key = str(i//max_n_group)
                     hdf5_file.create_group(group_key)
@@ -52,28 +62,57 @@ class H5MetaDataset(Dataset, ABC):
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
                     logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
+        return meta_per_batch
 
     @staticmethod
     @final
     def tar_dir_to_hdf5_dataset(tar_root_in_dir = 'ILSVRC2012_img_train',
                                 root_hdf5_out_dir = 'ILSVRC2012_img_train_h5',
-                                dataset_name = 'imagenet_meta', shuffle_tar_data = False):
+                                dataset_name = 'imagenet_meta', shuffle_tar_data = False, sub_batch_size = 1,
+                                max_n_group= 1e-5):
 
         tar_files_list = os.listdir(tar_root_in_dir)
         tar_file_contents_names = []
-        for tar_file_name in tar_files_list:
+        classes = []
+        index = 0
+        for cl,tar_file_name in enumerate(tar_files_list):
+            classes.append((cl,tar_file_name))
             file = os.path.join(tar_root_in_dir, tar_file_name)
             if tarfile.is_tarfile(file):
                 with tarfile.open(file,"r") as tf:
-                    tar_file_contents_names.extend(((n,tar_file_name[:-4]) for n in tf.getnames()))
+                    nnames = tf.getnames()
+                    tar_file_contents_names.extend(((n,tar_file_name[:-4],cl, index+i) for i,n in enumerate(nnames)))
+                    index = index + len(nnames)
+
 
         if shuffle_tar_data:
             shuffle(tar_file_contents_names)
 
-        H5MetaDataset.write_tar_file_data_to_hdf5(root_hdf5_out_dir, tar_file_contents_names,
-                                               hdf5_file_name=f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5")
+        hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5"
+
+        meta = H5MetaDataset.write_tar_file_data_to_hdf5(root_hdf5_out_dir, tar_file_contents_names,
+                                               hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
+                                                         max_n_group=max_n_group)
+
+        classes_list, shapes_list, indices_list, batch_shapes_list = zip(*meta)
+
         df = pd.DataFrame(tar_file_contents_names, columns=['file_name','class'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
+        data_dtype = str(bytes)
+
+
+        with h5py.File(hdf5_file_name, "w") as hdf5_file:
+            hdf5_file.attrs['classes'] =np.stack(classes_list)
+            hdf5_file.attrs['shapes'] =np.stack(shapes_list)
+            hdf5_file.attrs['indices'] =np.stack(indices_list)
+            hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
+            hdf5_file.attrs['max_idx'] = int(len(classes_list))
+            hdf5_file.attrs['num_samples'] = int(index)
+            hdf5_file.attrs['max_n_group'] = int(max_n_group)
+            hdf5_file.attrs['data_mode'] = str('image')
+            hdf5_file.attrs['data_dtype'] = str(data_dtype)
+            hdf5_file.attrs['sub_batch_size'] = int(sub_batch_size)
+
 
 
 
