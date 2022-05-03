@@ -1,16 +1,24 @@
-from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda
+from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda, device as device_t
 from torch.utils import data
 from torch.jit import script
-from . import _H5Dataset
-from pytorch_h5dataset.utils import NormImage
+from .dataset.imageDataset import ImageDataset
+from .dataset.bloscDataset import BloscDataset
+from .dataset.metaDataset import H5MetaDataset
+from pytorch_h5dataset.utils import NormImageUint8ToFloat
 from pandas import concat
+import numpy as np
 from math import ceil
 import types
+import itertools
 
-def collate_samples(sample):
+
+
+def collate_samples_tensor(sample):
     sample, meta = zip(*sample)
     cl, meta = zip(*meta)
+
     if isinstance(meta[0], Tensor):
+        meta = cat(meta)
         out = None
         ### code from
         # https://github.com/pytorch/pytorch/blob/be2dc8f2940d3c95941516a811be8c504910d1ea/torch/utils/data/_utils/collate.py
@@ -20,22 +28,43 @@ def collate_samples(sample):
             numel = sum([x.numel() for x in sample])
             storage = sample[0].storage()._new_shared(numel)
             out = sample[0].new(storage)
-        return cat(sample, dim=0, out = out), (cat(cl), cat(meta))
+
+        return cat(sample, dim=0, out = out), (cat(cl), meta)
     else:
-        return cat(sample, dim=0), (cat(cl), concat(meta))
+        meta = concat(meta)
+        return cat(sample, dim=0), (cat(cl), meta)
+
+def collate_samples_list(sample):
+    sample, meta = zip(*sample)
+    sample = np.array(list(itertools.chain(*sample)), dtype=np.object)
+    cl, meta = zip(*meta)
+    if isinstance(meta[0], Tensor):
+        return sample, (cat(cl), cat(meta))
+    else:
+        meta = concat(meta)
+        return sample, (cat(cl), concat(meta))
+
+def collate_samples(sample):
+    _sample = sample[0][0]
+    if isinstance(_sample, Tensor):
+        return collate_samples_tensor(sample)
+    else:
+        return collate_samples_list(sample)
+
+
 
 class H5DataLoader(object):
 
-    def __init__(self, dataset: _H5Dataset, batch_size=1, device='cpu', num_batches_buffered=10,
+    def __init__(self, dataset: H5MetaDataset, batch_size=1, device=device_t('cpu'), num_batches_buffered=10,
                  shuffle=False, sampler=None,
                  batch_sampler=None, num_workers=0, collate_fn=None,
                  pin_memory=False, drop_last=False, timeout=0,
-                 worker_init_fn=None, multiprocessing_context=None, normalize=script(NormImage()).cuda(),
+                 worker_init_fn=None, multiprocessing_context=None, normalize=None,
                  return_meta_indices = True):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.num_sub_batches_buffered = dataset.sub_batch_size
-        self.device = device if cuda.is_available() else 'cpu'
+        self.device = device_t(device) if cuda.is_available() else device_t('cpu')
         self.normalize = normalize
         self.dataset = dataset
         self.return_meta_indices = return_meta_indices
@@ -51,13 +80,14 @@ class H5DataLoader(object):
 
     def __iter__(self):
 
+
         for sample, (meta_class, meta_indices) in self.dataloader:
             meta_indices = meta_indices.view(-1)
-            if self.pin_memory:
-                sample = sample.pin_memory()
-            sample =  sample.to(self.device)
-            meta = as_tensor(meta_class.view(-1), dtype=float32, device=self.device).requires_grad_(True)
-            sample = self.normalize(sample)
+            if self.pin_memory and not isinstance(sample, np.ndarray):
+                sample = sample.pin_memory().to(self.device)
+            meta = as_tensor(meta_class.view(-1), dtype=float32, device=self.device)#.requires_grad_(True)
+            if self.normalize is not None:
+                sample = self.normalize(sample)
             if self.shuffle:
                 perm = randperm(len(sample))
             else:
@@ -65,6 +95,8 @@ class H5DataLoader(object):
             for i in range(0, perm.size(0), self.batch_size):
                 rand_batch_indexes = perm[i:i + self.batch_size]
                 x = sample[rand_batch_indexes]
+                if len(rand_batch_indexes) == 1:
+                    x =  np.expand_dims(x, axis=0)
                 y = meta[rand_batch_indexes]
                 if self.return_meta_indices:
                     yield x,(y,meta_indices[rand_batch_indexes])

@@ -42,12 +42,21 @@ class ImageDataset(H5MetaDataset):
                  tr_random_flip = None,
                  tr_random_scale_range = None,
                  decode = None, ## None, cpu, cuda
-                 output_device = device('cpu'), #cpu or cuda
+                 output_device: device = device('cpu'), #cpu or cuda
                  tensor_transforms = None,
                  quality=83
                  ):
-        assert tr_crop_strategy in ['random', 'center', None]
         decode = None if decode is None else device(decode)
+        assert decode is not None or all(a is None for a in [tr_crop_strategy,
+                                   tr_crop_size,
+                                   tr_crop_area_ratio_range,
+                                   tr_output_size,
+                                   tr_random_rotation_angles,
+                                   tr_random_flip,
+                                   tr_random_scale_range]), "If image preprocessing is activated, a decode device must be specified"
+
+        assert tr_crop_strategy in ['random', 'center', None]
+
         output_device = device(output_device)
 
         super(ImageDataset, self).__init__(dataset_name, dataset_root, split_mode, split_ratio, split_number)

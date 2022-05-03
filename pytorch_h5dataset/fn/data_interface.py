@@ -81,7 +81,7 @@ class DataInterface(ABC):
         :return: function that crops a sub_batch
         """
 
-        assert isinstance(crop_area_ratio_range, (float, int)) or isinstance(crop_area_ratio_range, tuple) and \
+        assert crop_area_ratio_range is None or isinstance(crop_area_ratio_range, (float, int)) or isinstance(crop_area_ratio_range, tuple) and \
                len(
                    crop_area_ratio_range) <= 2, "Crop area ratio must be a int or float value or a tuple of length shorter then 3."
 
