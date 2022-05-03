@@ -67,7 +67,7 @@ class H5MetaDataset(Dataset, ABC):
                 meta_shapes.append(np.array(shapes_))
                 meta_indexes.append(np.array(indexes_))
                 meta_max_shapes.append(np.array(max_shapes_))
-                print(meta_cls)
+
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
                     hdf5_file.create_group(group_key)
@@ -83,7 +83,7 @@ class H5MetaDataset(Dataset, ABC):
     def tar_dir_to_hdf5_dataset(tar_root_in_dir = 'ILSVRC2012_img_train',
                                 root_hdf5_out_dir = 'ILSVRC2012_img_train_h5',
                                 dataset_name = 'imagenet_meta', shuffle_tar_data = False, sub_batch_size = 1,
-                                max_n_group= 1e5):
+                                max_n_group= int(1e5)):
 
         tar_files_list = os.listdir(tar_root_in_dir)
         tar_file_contents_names = []
@@ -106,7 +106,7 @@ class H5MetaDataset(Dataset, ABC):
 
         meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_file_contents_names,
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
-                                                         max_n_group=max_n_group)
+                                               max_n_group=max_n_group)
 
         print(meta)
         classes_list, shapes_list, indices_list, batch_shapes_list = meta
@@ -120,6 +120,7 @@ class H5MetaDataset(Dataset, ABC):
 
         with h5py.File(hdf5_file_name, "a") as hdf5_file:
             hdf5_file.attrs['classes'] =np.stack(classes_list)
+            print(np.stack(classes_list))
             hdf5_file.attrs['shapes'] =np.stack(shapes_list)
             hdf5_file.attrs['indices'] =np.stack(indices_list)
             hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
