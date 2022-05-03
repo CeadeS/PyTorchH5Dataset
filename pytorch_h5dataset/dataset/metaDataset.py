@@ -33,7 +33,7 @@ class H5MetaDataset(Dataset, ABC):
         return data_interface.load_sample(row)
 
     @staticmethod
-    def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.hdf5', sub_batch_size=1, max_n_group = int(1e5)):
+    def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.h5', sub_batch_size=1, max_n_group = int(1e5)):
         no_files = len(tar_file_contents_names)
         max_n_keys = int(no_files)//sub_batch_size
         meta = []
@@ -88,7 +88,7 @@ class H5MetaDataset(Dataset, ABC):
         if shuffle_tar_data:
             shuffle(tar_file_contents_names)
 
-        hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.hdf5"
+        hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.h5"
 
         meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_file_contents_names,
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
