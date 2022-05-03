@@ -84,6 +84,7 @@ class ImageDataset(H5MetaDataset):
             transforms.append(crop_function)
 
         if tr_output_size is not None:
+            print('add scale')
             transforms.append(partial(image.ImageInterface.scale, heights = tr_output_size[0], widths = tr_output_size[1]))
 
         if tr_random_rotation_angles is not None:
