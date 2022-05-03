@@ -1,5 +1,5 @@
 from .metaDataset import H5MetaDataset
-from torch import device, version, cat, jit, nn
+from torch import device, version, cat, jit, nn, stack
 import warnings
 from ..fn import image
 from functools import partial
@@ -106,7 +106,7 @@ class ImageDataset(H5MetaDataset):
             transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
 
         if tr_output_size is not None and decode is not None:
-            transforms.append(cat)
+            transforms.append(stack)
 
         self.image_transforms = Transform(transforms=transforms)
         self.tensor_transforms = tensor_transforms
