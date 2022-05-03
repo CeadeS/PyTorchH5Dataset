@@ -255,7 +255,7 @@ class ImageInterface(DataInterface):
             heights = [heights] * len(sub_batch)
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            result[i] =  resize(sub_batch[i],(widths[i], heights[i]))
+            result[i] = resize(sub_batch[i],(widths[i], heights[i]))
         return result
 
     @staticmethod
