@@ -78,7 +78,7 @@ class H5MetaDataset(Dataset, ABC):
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
                     hdf5_file.create_group(group_key)
-                hdf5_file[group_key].create_dataset(f'samples/{str(int(idx%max_n_group))}', data=d)
+                hdf5_file[group_key].create_dataset(f'samples/{str(int(idx%max_n_group))}', data=[d])
                 #h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch)
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names)//sub_batch_size:7d} written", end='')
                 if i % 1000 == 0:
