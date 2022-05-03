@@ -119,7 +119,7 @@ class H5MetaDataset(Dataset, ABC):
             hdf5_file.attrs['shapes'] =np.stack(shapes_list)
             hdf5_file.attrs['indices'] =np.stack(indices_list)
             hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
-            hdf5_file.attrs['max_idx'] = int(len(classes_list))
+            hdf5_file.attrs['max_idx'] = int(len(classes_list))-1
             hdf5_file.attrs['num_samples'] = int(index)
             hdf5_file.attrs['max_n_group'] = int(max_n_group)
             hdf5_file.attrs['data_mode'] = str('image')
