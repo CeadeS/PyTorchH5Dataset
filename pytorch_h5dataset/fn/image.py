@@ -270,7 +270,7 @@ class ImageInterface(DataInterface):
         if torch.device('cuda').type == torch.device(device).type:
             return torch_decode(bytes_obj)
         else:
-            return np.moveaxis(jpeg_decode(bytes_obj), -1, 0)
+            return torch.from_numpy(np.moveaxis(jpeg_decode(bytes_obj), -1, 0))
 
     @staticmethod
     def sub_batch_decode(sub_batch: [bytes], device='cpu'):
