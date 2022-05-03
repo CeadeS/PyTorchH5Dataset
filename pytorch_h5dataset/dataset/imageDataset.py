@@ -1,5 +1,6 @@
 from .metaDataset import H5MetaDataset
 from torch import device, version, cat, jit, nn, stack
+from torchvision.transforms import Resize
 import warnings
 from ..fn import image
 from functools import partial
@@ -84,7 +85,6 @@ class ImageDataset(H5MetaDataset):
             transforms.append(crop_function)
 
         if tr_output_size is not None:
-            print('add scale')
             transforms.append(partial(image.ImageInterface.scale, heights = tr_output_size[0], widths = tr_output_size[1]))
 
         if tr_random_rotation_angles is not None:
@@ -107,6 +107,7 @@ class ImageDataset(H5MetaDataset):
             transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
 
         if tr_output_size is not None and decode is not None:
+            transforms.append(Resize(tr_output_size))
             transforms.append(stack)
 
         self.image_transforms = Transform(transforms=transforms)
