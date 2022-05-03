@@ -6,6 +6,7 @@ from jpegtran import lib
 from simplejpeg import encode_jpeg as encode
 from simplejpeg import decode_jpeg as jpeg_decode
 from torchvision.io import decode_image as torch_decode
+from torchvision.transforms.functional import resize
 from torch import as_tensor, uint8
 
 import torch
@@ -245,6 +246,16 @@ class ImageInterface(DataInterface):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
             result[i] = lib.Transformation(sub_batch[i]).scale(widths[i], heights[i], quality)
+        return result
+
+    @staticmethod
+    def scale_torch(sub_batch: [bytes], heights: [int], widths: [int]):
+        if isinstance(widths, int) and isinstance(widths, int):
+            widths = [widths] * len(sub_batch)
+            heights = [heights] * len(sub_batch)
+        result = list(range(len(sub_batch)))
+        for i in range(len(sub_batch)):
+            result[i] =  resize(sub_batch[i],(widths[i], heights[i]))
         return result
 
     @staticmethod
