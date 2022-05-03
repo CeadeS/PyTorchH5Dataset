@@ -36,12 +36,18 @@ class H5MetaDataset(Dataset, ABC):
     def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.h5', sub_batch_size=1, max_n_group = int(1e5)):
         no_files = len(tar_file_contents_names)
         max_n_keys = int(no_files)//sub_batch_size
-        meta = []
+        meta_cls = []
+        meta_shapes = []
+        meta_indexes = []
+        meta_max_shapes = []
         with h5py.File(hdf5_file_name, "w") as hdf5_file:
             group_key= str(0)
             for i in range(0,max_n_keys,sub_batch_size):
                 d = []
-                meta_per_batch = []
+                cls_ = []
+                shapes_ = []
+                indexes_ = []
+                max_shapes_ = []
                 max_shape = None
                 max_shape_size = 0
                 for j in range(sub_batch_size):
@@ -53,8 +59,14 @@ class H5MetaDataset(Dataset, ABC):
                     if np.prod(shape) > max_shape_size:
                         max_shape = shape
                         max_shape_size = np.prod(shape)
-                    meta_per_batch.append([cl,shape, index, max_shape])
-                meta.append(np.array(meta_per_batch))
+                    cls_.append(cl),
+                    shapes_.append(shape)
+                    indexes_.append(index)
+                    max_shapes_.append(max_shape)
+                meta_cls.append(np.array(cls_))
+                meta_shapes.append(np.array(shapes_))
+                meta_indexes.append(np.array(indexes_))
+                meta_max_shapes.append(np.array(max_shapes_))
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
                     hdf5_file.create_group(group_key)
@@ -63,7 +75,7 @@ class H5MetaDataset(Dataset, ABC):
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
                     logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
-        return meta
+        return meta_cls, meta_shapes, meta_indexes, meta_max_shapes
 
     @staticmethod
     @final
@@ -95,7 +107,7 @@ class H5MetaDataset(Dataset, ABC):
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
                                                          max_n_group=max_n_group)
 
-        classes_list, shapes_list, indices_list, batch_shapes_list = zip(*meta)
+        classes_list, shapes_list, indices_list, batch_shapes_list = meta
 
         df = pd.DataFrame(tar_file_contents_names, columns=['FileName','Class', 'ClassNo' ,'Index', 'FileType'])
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
