@@ -249,9 +249,10 @@ class ImageInterface(DataInterface):
 
     @staticmethod
     def sub_batch_as_tensor(sub_batch: [bytes], device=torch.device('cpu')):
+        result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            sub_batch[i] = as_tensor(sub_batch[i], dtype=uint8, device=torch.device(device))
-        return sub_batch
+            result[i] = as_tensor(sub_batch[i], dtype=uint8, device=torch.device(device))
+        return result
 
     @staticmethod
     def decode(bytes_obj, device='cpu'):
@@ -262,6 +263,7 @@ class ImageInterface(DataInterface):
 
     @staticmethod
     def sub_batch_decode(sub_batch: [bytes], device='cpu'):
+        result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            sub_batch[i] = ImageInterface.decode(sub_batch[i], device=device)
-        return sub_batch
+            result[i] = ImageInterface.decode(sub_batch[i], device=device)
+        return result
