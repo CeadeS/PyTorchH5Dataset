@@ -84,7 +84,7 @@ class H5MetaDataset(Dataset, ABC):
                 if i % 1000 == 0:
                     logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
                 idx = idx + 1
-        return meta_cls, meta_shapes, meta_indexes, meta_max_shapes, idx
+        return meta_cls, meta_shapes, meta_indexes, meta_max_shapes, idx-1
 
     @staticmethod
     @final
