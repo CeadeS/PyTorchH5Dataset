@@ -107,8 +107,8 @@ class ImageDataset(H5MetaDataset):
             transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
 
         if tr_output_size is not None and decode is not None:
-            transforms.append(Resize(tr_output_size))
             transforms.append(stack)
+            transforms.append(Resize(tr_output_size))
 
         self.image_transforms = Transform(transforms=transforms)
         self.tensor_transforms = tensor_transforms
