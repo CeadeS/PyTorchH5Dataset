@@ -53,7 +53,7 @@ class H5MetaDataset(Dataset, ABC):
                 for j in range(sub_batch_size):
                     content_name, tar_file_name, cl, index, _ = tar_file_contents_names[i+j]
                     file_path = os.path.join(tar_root_in_dir, tar_file_name+'.tar')
-                    im_bytes = tarfile.open(file_path,"r").extractfile(content_name).read()
+                    im_bytes = tarfile.open(file_path, "r").extractfile(content_name).read()
                     d.append(im_bytes)
                     shape = lib.Transformation(im_bytes).get_dimensions()
                     if np.prod(shape) > max_shape_size:
@@ -67,6 +67,7 @@ class H5MetaDataset(Dataset, ABC):
                 meta_shapes.append(np.array(shapes_))
                 meta_indexes.append(np.array(indexes_))
                 meta_max_shapes.append(np.array(max_shapes_))
+                print(meta_cls)
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
                     hdf5_file.create_group(group_key)
@@ -107,6 +108,7 @@ class H5MetaDataset(Dataset, ABC):
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
                                                          max_n_group=max_n_group)
 
+        print(meta)
         classes_list, shapes_list, indices_list, batch_shapes_list = meta
 
         df = pd.DataFrame(tar_file_contents_names, columns=['FileName','Class', 'ClassNo' ,'Index', 'FileType'])
