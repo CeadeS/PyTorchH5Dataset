@@ -1,5 +1,5 @@
 from .metaDataset import H5MetaDataset
-from torch import device, version, cat, jit, nn, stack
+from torch import device, version, cat, jit, nn, stack, as_tensor
 from torchvision.transforms import Resize
 import warnings
 from ..fn import image
@@ -102,13 +102,18 @@ class ImageDataset(H5MetaDataset):
                 transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(decode)))
             transforms.append(partial(image.ImageInterface.sub_batch_decode, device=device(decode)))
 
+
+
         if tr_output_size is not None and decode is not None:
             transforms.append(partial(image.ImageInterface.scale_torch, heights = tr_output_size[0], widths = tr_output_size[1]))
             transforms.append(stack)
+            transforms.append(partial(as_tensor, device=device(output_device)))
 
-
-        if output_device.type == 'cuda' or decode is not None or tensor_transforms is not None:
+        elif output_device.type == 'cuda' or decode is not None or tensor_transforms is not None:
             transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
+
+
+
 
 
 
