@@ -63,7 +63,7 @@ class H5MetaDataset(Dataset, ABC):
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
                     logging.info(f"{int(i):7d} of {len(tar_file_contents_names):7d} written")
-        return meta_per_batch
+        return meta
 
     @staticmethod
     @final
