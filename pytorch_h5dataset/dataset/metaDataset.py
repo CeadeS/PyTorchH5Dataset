@@ -18,6 +18,7 @@ from math import floor
 from jpegtran import lib
 from simplejpeg import decode_jpeg as jpeg_decode
 
+
 #TODO
 #handlers = [logging.FileHandler(filename='data_import.log'),logging.StreamHandler(sys.stdout) ]
 #logging.basicConfig(format='%(asctime)s %(message)s', level=log_level , handlers=handlers)
