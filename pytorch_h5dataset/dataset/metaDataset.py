@@ -119,7 +119,7 @@ class H5MetaDataset(Dataset, ABC):
                         except:
                             print(f"Skipped File {content_name} in {file_path}")
                             continue
-                    sample_index = indexes.pop()
+                    sample_index = indexes.pop(0)
                     batch_index = sample_index // sub_batch_size
                     group_key = str(int(batch_index)%max_n_group)
                     dataset_key = str(int(batch_index)//max_n_group)
