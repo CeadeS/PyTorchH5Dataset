@@ -11,7 +11,7 @@ setup(
     description='Accelerated data loading H5 dataset module for  PyTorch.',
     install_requires=[
        'numpy',
-       'h5py',
+       'h5py>=3.3.0',
        'hdf5plugin',
        'pandas',
        'Pillow',
