@@ -86,7 +86,7 @@ class ImageInterface(DataInterface):
     def get_sub_batch_shapes(sub_batch):
         heights, widths = [], []
         for i in range(len(sub_batch)):
-            width, height = lib.Transformation(sub_batch[i]).get_dimensions()
+            width, height = lib.Transformation(sub_batch[i][0]).get_dimensions()
             heights.append(int(height))
             widths.append(int(width))
         return heights, widths
