@@ -49,7 +49,8 @@ class ImageInterface(DataInterface):
             classes, shapes, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
             im_list = []
             for sample_idx, sample in enumerate(batch_list):
-                im_list.append(ImageInterface.load_sample(sample))
+                im, _ = ImageInterface.load_sample(sample)
+                im_list.append(im)
             shapes = np.array(shapes, dtype=np.uint16)
             yield im_list, np.array(classes, dtype=np.uint16), \
                   np.array(shapes, dtype=np.uint16), np.array(indices, dtype=np.uint32)
