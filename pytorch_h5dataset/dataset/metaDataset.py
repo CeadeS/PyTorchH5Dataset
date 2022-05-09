@@ -123,7 +123,7 @@ class H5MetaDataset(Dataset, ABC):
                         batch_index = sample_index // sub_batch_size
                         group_key = str(int(batch_index)%max_n_group)
                         dataset_key = f"sample/{str(int(batch_index) // max_n_group)}"
-                        print(f"Writing {group_key}{dataset_key}, with {batch_index}, {sample_index}")
+                        #print(f"Writing {group_key}{dataset_key}, with {batch_index}, {sample_index}")
                         sub_batch_key = 0
                         if group_key in hdf5_file.keys():
                             if dataset_key in hdf5_file[group_key].keys():
