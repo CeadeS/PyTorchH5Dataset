@@ -106,7 +106,7 @@ class H5MetaDataset(Dataset, ABC):
         with h5py.File(hdf5_file_name, "w", fs_strategy='fsm', fs_persist='ALL', fs_threshold=1) as hdf5_file:
 
             for tar_dict in tar_files_contents_lists:
-                tar_file_name, tar_contents = tar_dict
+                tar_file_name, tar_contents = tar_dict['tar_file'], tar_dict['contents']
                 file_path = os.path.join(tar_root_in_dir, tar_file_name)
                 print(f"unpacking {file_path}")
                 with tarfile.open(file_path, "r") as tar_file:
