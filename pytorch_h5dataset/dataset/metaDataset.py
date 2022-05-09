@@ -104,11 +104,9 @@ class H5MetaDataset(Dataset, ABC):
             shuffle(indexes)
         idx= 0
         with h5py.File(hdf5_file_name, "w", fs_strategy='fsm', fs_persist='ALL', fs_threshold=1) as hdf5_file:
-
             for tar_dict in tar_files_contents_lists:
                 tar_file_name, tar_contents = tar_dict['tar_file'], tar_dict['contents']
                 file_path = os.path.join(tar_root_in_dir, tar_file_name)
-                print(f"unpacking {file_path}")
                 with tarfile.open(file_path, "r") as tar_file:
                     for tar_content in tar_contents:
                         content_name, tar_file_name, cl, index, _ = tar_content
@@ -129,13 +127,14 @@ class H5MetaDataset(Dataset, ABC):
                             if dataset_key in hdf5_file[group_key].keys():
                                 sample = hdf5_file[group_key][dataset_key][()]
                                 sub_batch_key = len(sample)
-                                if len(sample)==1:
-                                    np_obj = [sample, np_obj]
-                                else:
-                                    np_obj = [*sample, np_obj]
+                                np_obj = [*sample, np_obj]
                                 del hdf5_file[group_key][dataset_key]
+                            else:
+                                np_obj = [np_obj]
+                            
                         else:
                             hdf5_file.create_group(group_key)
+                            np_obj = [np_obj]
 
                         hdf5_file[group_key].create_dataset(dataset_key, data=np_obj)
 
@@ -145,11 +144,12 @@ class H5MetaDataset(Dataset, ABC):
                         meta_shapes[batch_index,sub_batch_key] = shape
                         meta_indexes[batch_index,sub_batch_key] = index
                         meta_max_shapes[batch_index,sub_batch_key] = shape
+                        idx = idx + 1
 
-                print(f"\r{int(idx):7d} of {len(tar_files_contents_lists):7d} written", end='')
-                if idx % 1000 == 0:
-                    logging.info(f"{int(idx):7d} of {len(tar_files_contents_lists):7d} written")
-                idx = idx + 1
+                        print(f"\r{int(idx):7d} of {n_samples:7d} written", end='')
+                        if idx % 1000 == 0:
+                            logging.info(f"{int(idx):7d} of {n_samples:7d} written")
+                
         return meta_cls, meta_shapes, meta_indexes, meta_max_shapes, idx-1
 
     @staticmethod
@@ -183,7 +183,7 @@ class H5MetaDataset(Dataset, ABC):
 
         meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_files_contents_list,
                                                hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
-                                               max_n_group=max_n_group, n_samples=index)
+                                               max_n_group=max_n_group, n_samples=index, shuffle_indexes=shuffle_tar_data)
 
         classes_list, shapes_list, indices_list, batch_shapes_list, max_idx = meta
 
@@ -397,11 +397,13 @@ class H5MetaDataset(Dataset, ABC):
         dataset_no = str(sub_batch_idx%self.max_n_group)
 
         sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
+        
         meta_data = (torch.as_tensor(self.classes[sub_batch_idx]),
                      torch.as_tensor(self.indices[sub_batch_idx]))
-
+        
         if sub_batch_slice is not None:
-            return sub_batch[sub_batch_slice], (meta_data[0][sub_batch_slice], meta_data[1][[sub_batch_slice]])
+            sub_batch, meta_data = sub_batch[sub_batch_slice], (meta_data[0][sub_batch_slice], meta_data[1][[sub_batch_slice]])
+
         return sub_batch, meta_data
 
     @final

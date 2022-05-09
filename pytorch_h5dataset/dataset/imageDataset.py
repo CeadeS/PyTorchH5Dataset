@@ -13,7 +13,8 @@ class ImageDataset(H5MetaDataset):
 
     def __getitem__(self, sub_batch_idx):
         sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
-        sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk]
+        sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
+        
         if self.tensor_transforms is not None:
             sample = self.tensor_transforms(sample)
 

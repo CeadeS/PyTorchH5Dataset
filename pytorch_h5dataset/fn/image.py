@@ -39,8 +39,8 @@ class ImageInterface(DataInterface):
             return im_bytes
         else:
             with open(sample[path_key], 'rb') as f:
-                im_bytes = f.read()
-            return im_bytes, lib.Transformation(im_bytes).get_dimensions()
+                im_bytes = f.read()            
+            return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
 
     @staticmethod
     def batchify_sample_data_list(sample_data_list, batch_size=50):
@@ -49,7 +49,7 @@ class ImageInterface(DataInterface):
             classes, shapes, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
             im_list = []
             for sample_idx, sample in enumerate(batch_list):
-                im_list.append(ImageInterface.load_sample(sample)[0])
+                im_list.append(ImageInterface.load_sample(sample))
             shapes = np.array(shapes, dtype=np.uint16)
             yield im_list, np.array(classes, dtype=np.uint16), \
                   np.array(shapes, dtype=np.uint16), np.array(indices, dtype=np.uint32)
@@ -163,14 +163,14 @@ class ImageInterface(DataInterface):
         if width is None or height is None:
             width, height = [], []
             for i in range(len(sub_batch)):
-                _width, _height = lib.Transformation(sub_batch[i]).get_dimensions()
+                _width, _height = lib.Transformation(sub_batch[i][0]).get_dimensions()
                 width.append(int(_width))
                 height.append(int(_height))
         for i in range(len(sub_batch)):
             crop_width = int(w_end[i] - w_offset[i])
             crop_height = int(h_end[i] - h_offset[i])
-            result[i] = lib.Transformation(sub_batch[i]).crop(w_offset[i], h_offset[i], min(crop_width, width[i]),
-                                                              min(crop_height, height[i]))
+            result[i] = [lib.Transformation(sub_batch[i][0]).crop(w_offset[i], h_offset[i], min(crop_width, width[i]),
+                                                              min(crop_height, height[i]))]
         return result
 
     @staticmethod
@@ -180,10 +180,7 @@ class ImageInterface(DataInterface):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
             angle = angles[rands[i].item()]
-            if angle != 0:
-                result[i] = lib.Transformation(sub_batch[i]).rotate(angle)
-            else:
-                result[i] = sub_batch[i]
+            result[i] =[lib.Transformation(sub_batch[i][0]).rotate(angle)]
 
         return result
 
@@ -192,10 +189,7 @@ class ImageInterface(DataInterface):
         result = list(range(len(sub_batch)))
         r = torch.randint(2, size=(len(sub_batch),))
         for i in range(len(sub_batch)):
-            if r[i].item() == 1:
-                result[i] = lib.Transformation(sub_batch[i]).flip(direction='horizontal')
-            else:
-                result[i] = sub_batch[i]
+            result[i] = [lib.Transformation(sub_batch[i][0]).flip(direction='horizontal')]
         return result
 
     @staticmethod
@@ -203,10 +197,7 @@ class ImageInterface(DataInterface):
         result = list(range(len(sub_batch)))
         r = torch.randint(2, size=(len(sub_batch),))
         for i in range(len(sub_batch)):
-            if r[i].item() == 1:
-                result[i] = lib.Transformation(sub_batch[i]).flip(direction='vertical')
-            else:
-                result[i] = sub_batch[i]
+            result[i] = [lib.Transformation(sub_batch[i][0]).flip(direction='vertical')]
         return result
 
     @staticmethod
@@ -220,9 +211,9 @@ class ImageInterface(DataInterface):
         for i in range(len(sub_batch)):
             beg_idx_1 = max(0, (100 - crop_height) // 2)
             beg_idx_2 = max(0, (100 - crop_width) // 2)
-            width, height = lib.Transformation(sub_batch[i]).get_dimensions()
-            result[i] = lib.Transformation(sub_batch[i]).crop(beg_idx_2, beg_idx_1, min(crop_width, width),
-                                                              min(crop_height, height))
+            width, height = lib.Transformation(sub_batch[i][0]).get_dimensions()
+            result[i] = [lib.Transformation(sub_batch[i][0]).crop(beg_idx_2, beg_idx_1, min(crop_width, width),
+                                                              min(crop_height, height))]
         return result
 
     @staticmethod
@@ -235,7 +226,7 @@ class ImageInterface(DataInterface):
             width.append(int(rands[i].item() * _width))
             height.append(int(rands[i].item() * _height))
         for i in range(len(sub_batch)):
-            result[i] = lib.Transformation(sub_batch[i]).scale(width[i], height[i], quality)
+            result[i] = [lib.Transformation(sub_batch[i][0]).scale(width[i], height[i], quality)]
         return result
 
     @staticmethod
@@ -244,8 +235,8 @@ class ImageInterface(DataInterface):
             widths = [widths] * len(sub_batch)
             heights = [heights] * len(sub_batch)
         result = list(range(len(sub_batch)))
-        for i in range(len(sub_batch)):
-            result[i] = lib.Transformation(sub_batch[i]).scale(widths[i], heights[i], quality)
+        for i in range(len(sub_batch)):         
+            result[i] = [lib.Transformation(sub_batch[i][0]).scale(widths[i], heights[i], quality)]
         return result
 
     @staticmethod
@@ -254,15 +245,15 @@ class ImageInterface(DataInterface):
             widths = [widths] * len(sub_batch)
             heights = [heights] * len(sub_batch)
         result = list(range(len(sub_batch)))
-        for i in range(len(sub_batch)):
-            result[i] = resize(sub_batch[i],(widths[i], heights[i]))
+        for i in range(len(sub_batch)):     
+            result[i] = resize(sub_batch[i][0],(widths[i], heights[i]))
         return result
 
     @staticmethod
     def sub_batch_as_tensor(sub_batch: [bytes], device=torch.device('cpu')):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            result[i] = as_tensor(sub_batch[i], dtype=uint8, device=torch.device(device))
+            result[i] = as_tensor(sub_batch[i][0], dtype=uint8, device=torch.device(device))
         return result
 
     @staticmethod
@@ -276,5 +267,5 @@ class ImageInterface(DataInterface):
     def sub_batch_decode(sub_batch: [bytes], device='cpu'):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            result[i] = ImageInterface.decode(sub_batch[i], device=device)
+            result[i] = [ImageInterface.decode(sub_batch[i][0], device=device)]
         return result
