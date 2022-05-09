@@ -129,7 +129,10 @@ class H5MetaDataset(Dataset, ABC):
                             if dataset_key in hdf5_file[group_key].keys():
                                 sample = hdf5_file[group_key][dataset_key][()]
                                 sub_batch_key = len(sample)
-                                np_obj = [*sample, np_obj]
+                                if len(sample)==1:
+                                    np_obj = [sample, np_obj]
+                                else:
+                                    np_obj = [*sample, np_obj]
                                 del hdf5_file[group_key][dataset_key]
                         else:
                             hdf5_file.create_group(group_key)
