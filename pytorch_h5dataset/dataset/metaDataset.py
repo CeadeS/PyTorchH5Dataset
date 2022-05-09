@@ -126,7 +126,7 @@ class H5MetaDataset(Dataset, ABC):
                     print(f"Writing {group_key}/samples/{dataset_key}, with {batch_index}, {sample_index}")
                     sub_batch_key = 0
                     if group_key in hdf5_file.keys():
-                        if group_key in hdf5_file[group_key].keys():
+                        if dataset_key  in hdf5_file[group_key].keys():
                             sample = hdf5_file[group_key][f'samples/{dataset_key}'][()]
                             sub_batch_key = len(sample)
                             np_obj = [*sample, np_obj]
