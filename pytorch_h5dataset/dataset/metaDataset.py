@@ -122,19 +122,19 @@ class H5MetaDataset(Dataset, ABC):
                     sample_index = indexes.pop(0)
                     batch_index = sample_index // sub_batch_size
                     group_key = str(int(batch_index)%max_n_group)
-                    dataset_key = str(int(batch_index)//max_n_group)
-                    print(f"Writing {group_key}/samples/{dataset_key}, with {batch_index}, {sample_index}")
+                    dataset_key = f"sample/{str(int(batch_index) // max_n_group)}"
+                    print(f"Writing {group_key}{dataset_key}, with {batch_index}, {sample_index}")
                     sub_batch_key = 0
                     if group_key in hdf5_file.keys():
-                        if dataset_key  in hdf5_file[group_key].keys():
-                            sample = hdf5_file[group_key][f'samples/{dataset_key}'][()]
+                        if dataset_key in hdf5_file[group_key].keys():
+                            sample = hdf5_file[group_key][dataset_key][()]
                             sub_batch_key = len(sample)
                             np_obj = [*sample, np_obj]
-                            del hdf5_file[group_key][f'samples/{dataset_key}']
+                            del hdf5_file[group_key][dataset_key]
                     else:
                         hdf5_file.create_group(group_key)
 
-                    hdf5_file[group_key].create_dataset(f'samples/{dataset_key}', data=np_obj)
+                    hdf5_file[group_key].create_dataset(dataset_key, data=np_obj)
 
                     shape = lib.Transformation(im_bytes).get_dimensions()
 
