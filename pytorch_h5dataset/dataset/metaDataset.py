@@ -113,7 +113,7 @@ class H5MetaDataset(Dataset, ABC):
                     for tar_content in tar_contents:
                         content_name, tar_file_name, cl, index, _ = tar_content
                         im_bytes = tar_file.extractfile(content_name).read()
-                        np_obj = np.frombuffer(np_obj, dtype=f'S{len(im_bytes)}')
+                        np_obj = np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}')
                         try:
                             jpeg_decode(im_bytes)
                         except:
