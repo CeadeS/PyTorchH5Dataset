@@ -1,10 +1,6 @@
 from unittest import TestCase
 
-import os
-from pytorch_h5dataset import _H5Dataset
-from pytorch_h5dataset import H5DataLoader
 
-from matplotlib import pyplot as plt
 
 import os
 import pathlib
