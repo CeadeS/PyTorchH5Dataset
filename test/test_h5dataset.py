@@ -656,11 +656,12 @@ class TestH5Dataset(TestCase):
 
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset_image.csv')
         dataset = imageDataset.ImageDataset('test_dataset_image', './test/data/tmp/dataset/h5/',
+                                            decode='cpu',
                             tr_crop_strategy='random',
                             tr_crop_size=(0.8,1.3),
                             tr_crop_area_ratio_range=244*244)
         im, (cl, idx) = dataset[0]
-        self.assertAlmostEqual(np.prod(decode_jpeg(im[0]).shape)/10000, 3*244*244/10000,0)
+        self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
         self.assertEqual(cl.item(), 1)
         del dataset
 
@@ -669,11 +670,13 @@ class TestH5Dataset(TestCase):
 
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset_image.csv')
         dataset = imageDataset.ImageDataset('test_dataset_image', './test/data/tmp/dataset/h5/',
+                                            decode='cpu',
                                             tr_crop_strategy='random',
                                             tr_crop_size=(0.8,1.3),
                                             tr_crop_area_ratio_range=244*244)
         im, (cl, idx) = dataset[0]
-        self.assertAlmostEqual(np.prod(decode_jpeg(im[0]).shape)/10000, 3*244*244/10000,0)
+
+        self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
         self.assertListEqual(cl.tolist(), [1,0])
         del dataset
 

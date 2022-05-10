@@ -2,7 +2,7 @@ import os
 import zipfile
 import pandas as pd
 import json
-from .._h5dataset import _H5Dataset
+from ..dataset import BloscDataset
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
 from torch import nn
@@ -139,7 +139,7 @@ class BenchmarkDataset:
 
         logging.info("Finished preparing Benchmark Data")
 
-        _H5Dataset.create_dataset(f'coco2017_{mode}',
+        BloscDataset.create_dataset(f'coco2017_{mode}',
                                  fr'{dataset_root}/download/coco2017_{mode}_imgs',
                                  fr'{dataset_root}/h5',
                                   filename_to_metadata_func=None,
@@ -147,7 +147,7 @@ class BenchmarkDataset:
                                   )
 
         self.h5_transform = nn.Sequential(transforms.Resize(crop_size))
-        self.h5dataset = _H5Dataset(f'coco2017_{mode}', fr'{dataset_root}/h5', crop_ratio, crop_area, self.h5_transform)
+        self.h5dataset = BloscDataset(f'coco2017_{mode}', fr'{dataset_root}/h5', crop_ratio, crop_area, self.h5_transform)
 
 
 

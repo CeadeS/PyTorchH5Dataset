@@ -1,9 +1,9 @@
 from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda, device as device_t
 from torch.utils import data
 from torch.jit import script
-from .dataset.imageDataset import ImageDataset
-from .dataset.bloscDataset import BloscDataset
-from .dataset.metaDataset import H5MetaDataset
+from pytorch_h5dataset.dataset.imageDataset import ImageDataset
+from pytorch_h5dataset.dataset.bloscDataset import BloscDataset
+from pytorch_h5dataset.dataset.metaDataset import H5MetaDataset
 from pytorch_h5dataset.utils import NormImageUint8ToFloat
 from pandas import concat
 import numpy as np
@@ -53,7 +53,7 @@ def collate_samples(sample):
 
 
 
-class H5DataLoader(object):
+class DataLoader(object):
 
     def __init__(self, dataset: H5MetaDataset, batch_size=1, device=device_t('cpu'), num_batches_buffered=10,
                  shuffle=False, sampler=None,
