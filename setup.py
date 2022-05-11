@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pytorch_h5dataset',
-    version='0.2.2',
+    version='0.2.4b',
     packages=find_packages(),
     url='https://github.com/CeadeS/PyTorchH5Dataset',
     license='BSD-3-Clause License',
@@ -11,7 +11,7 @@ setup(
     description='Accelerated data loading H5 dataset module for  PyTorch.',
     install_requires=[
        'numpy',
-       'h5py',
+       'h5py>=3.3.0',
        'hdf5plugin',
        'pandas',
        'Pillow',
