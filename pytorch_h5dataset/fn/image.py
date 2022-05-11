@@ -205,10 +205,10 @@ class ImageInterface(DataInterface):
     def center_crop(sub_batch: [bytes], batch_height, batch_width, crop_height, crop_width):
         assert isinstance(crop_height, int) and isinstance(crop_width,
                                                            int), "Wrong Datatype for crop_height or crop_width"
-        assert isinstance(sub_batch, list) and len(sub_batch) > 0 and isinstance(sub_batch[0], bytes), "" \
+        assert isinstance(sub_batch, list) and len(sub_batch) > 0 and (isinstance(sub_batch[0], bytes) or isinstance(sub_batch[0], np.ndarray)), "" \
                                                                                                        "Sub Batch must be a List containing bytes"
 
-        result = [range(len(sub_batch))]
+        result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
             beg_idx_1 = max(0, (100 - crop_height) // 2)
             beg_idx_2 = max(0, (100 - crop_width) // 2)
