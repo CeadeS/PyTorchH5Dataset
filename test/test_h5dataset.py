@@ -194,7 +194,6 @@ class TestH5Dataset(TestCase):
         res_height, res_width = (-h_begin+h_end), (-w_begin+w_end)
         ratio = res_width / res_height
 
-
         self.assertGreaterEqual(crop_size_aspect_ratio[1], round(ratio,1))
         self.assertLessEqual(crop_size_aspect_ratio[0], round(ratio,1))
 
@@ -221,7 +220,7 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[0], round(area_ratio,1))
 
         crop_size_aspect_ratio = (0.73, 1.33)
-        crop_area_ratio_range = (0.08, 1.0)
+        crop_area_ratio_range = (0.08, 0.69)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = DataInterface.get_random_crop_args_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
