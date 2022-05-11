@@ -12,11 +12,12 @@ if pathlib.Path(os.getcwd()).name == 'fn':
 class Test(TestCase):
 
     def test_load_sample(self):
+        import numpy as np
         from pytorch_h5dataset.fn.image import ImageInterface
         sample_bytes = ImageInterface.load_sample({'type': 'jpeg', 'path': './test/data/images/rgb/a/andromeda_0.png'})
-        self.assertIsInstance(sample_bytes, bytes)
+        self.assertIsInstance(sample_bytes[0], np.ndarray)
         sample_bytes = ImageInterface.load_sample({'type': 'jpeg', 'path': './test/data/images/rgb/b/pano_1.jpg'})
-        self.assertIsInstance(sample_bytes, bytes)
+        self.assertIsInstance(sample_bytes[0], np.ndarray)
 
     def test_center_crop(self):
         from pytorch_h5dataset.fn.image import ImageInterface
