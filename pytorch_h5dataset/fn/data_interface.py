@@ -243,7 +243,7 @@ class DataInterface(ABC):
         return h_begin, w_begin,  h_begin+crop_height, w_begin+crop_width,
 
     @staticmethod
-    #@final
+    @final
     def get_random_crop_args_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio_range_range,
                                                                       crop_area_ratio_range,
                                                                       batch_height, batch_width, random_location=True):
@@ -274,7 +274,6 @@ class DataInterface(ABC):
                 return h_begin, w_begin, min(h_begin + crop_height, batch_height), min(w_begin + crop_width,
                                                                                            batch_width)
         # Fallback to central crop
-
         return DataInterface.get_central_crop_args(batch_width, batch_height, crop_area_ratio_range)
 
     @staticmethod

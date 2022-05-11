@@ -1,12 +1,11 @@
+import os
+import pathlib
 from unittest import TestCase
 
 from pytorch_h5dataset.dataset import imageDataset, bloscDataset
 from pytorch_h5dataset.dataset.bloscDataset import BloscDataset as _H5Dataset
 
-#TODO refactor tests to test jpeg as well
-
-import os
-import pathlib
+# TODO refactor tests to test jpeg as well
 if  pathlib.Path(os.getcwd()).name == 'test':
     os.chdir('../')
 
@@ -188,12 +187,13 @@ class TestH5Dataset(TestCase):
         self.assertLessEqual(crop_area_ratio_range[1], round(area_ratio,2))
 
         crop_size_aspect_ratio = (0.3, 0.7)
-        crop_area_ratio_range = (0.5, 0.5)
+        crop_area_ratio_range = (0.3, 0.3)
         batch_height = 217
         batch_width = 244
         h_begin, w_begin, h_end, w_end = DataInterface.get_random_crop_args_within_ratio_range_given_crop_size_ratio(crop_size_aspect_ratio, crop_area_ratio_range, batch_height, batch_width)
         res_height, res_width = (-h_begin+h_end), (-w_begin+w_end)
         ratio = res_width / res_height
+
 
         self.assertGreaterEqual(crop_size_aspect_ratio[1], round(ratio,1))
         self.assertLessEqual(crop_size_aspect_ratio[0], round(ratio,1))
@@ -628,11 +628,7 @@ class TestH5Dataset(TestCase):
         import pandas as pd
         import shutil as sh
         import numpy as np
-        from simplejpeg import decode_jpeg
-        from torch import tensor
 
-        from matplotlib import pyplot as plt
-        import torchvision.io as io
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
@@ -912,12 +908,7 @@ class TestH5Dataset(TestCase):
     def test_imageDataset(self):
         import pandas as pd
         import shutil as sh
-        import numpy as np
-        from simplejpeg import decode_jpeg
-        from torch import tensor
 
-        from matplotlib import pyplot as plt
-        import torchvision.io as io
         dataframe = pd.read_csv('./test/data/test_dataset.csv')
         os.makedirs('./test/data/tmp/dataset/h5/',exist_ok=True)
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset.csv')
