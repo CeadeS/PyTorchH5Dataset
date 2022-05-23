@@ -3,7 +3,6 @@ from typing import final
 from torch.utils.data import Dataset
 import numpy as np
 import h5py, hdf5plugin, tables  # fixes plugins not found Exceptions
-import torch
 from math import sqrt
 import imghdr
 import sndhdr
@@ -14,6 +13,7 @@ import logging
 import difflib
 from ..fn.blosc import BloscInterface
 from ..fn.image import ImageInterface
+from tqdm import tqdm
 from math import floor
 from jpegtran import lib
 from simplejpeg import decode_jpeg as jpeg_decode
@@ -37,7 +37,7 @@ class H5MetaDataset(Dataset, ABC):
 
 
     @staticmethod
-    def __write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, hdf5_file_name='imagenet.h5', sub_batch_size=1, max_n_group = int(1e5)):
+    def __write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_file_contents_names, h5_file_name='imagenet.h5', sub_batch_size=1, max_n_group = int(1e5)):
         no_files = len(tar_file_contents_names)
         max_n_keys = int(no_files)
         meta_cls = []
@@ -45,9 +45,9 @@ class H5MetaDataset(Dataset, ABC):
         meta_indexes = []
         meta_max_shapes = []
         idx= 0
-        with h5py.File(hdf5_file_name, "w") as hdf5_file:
+        with h5py.File(h5_file_name, "w") as h5_file:
             group_key= str(0)
-            for i in range(0,max_n_keys,sub_batch_size):
+            for i in tqdm(range(0,max_n_keys,sub_batch_size), desc='Writing Sub Batches to h5'):
                 d = []
                 cls_ = []
                 shapes_ = []
@@ -80,8 +80,8 @@ class H5MetaDataset(Dataset, ABC):
 
                 if i%max_n_group==0:
                     group_key = str(int(i//max_n_group))
-                    hdf5_file.create_group(group_key)
-                hdf5_file[group_key].create_dataset(f'samples/{str(int(idx%max_n_group))}', data=d)
+                    h5_file.create_group(group_key)
+                h5_file[group_key].create_dataset(f'samples/{str(int(idx%max_n_group))}', data=d)
                 #h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch)
                 print(f"\r{int(i):7d} of {len(tar_file_contents_names):7d} written", end='')
                 if i % 1000 == 0:
@@ -91,9 +91,10 @@ class H5MetaDataset(Dataset, ABC):
 
     @staticmethod
     def write_tar_file_data_to_hdf5(tar_root_in_dir ,tar_files_contents_lists, n_samples,
-                                    hdf5_file_name='imagenet.h5',
+                                    h5_file_name='imagenet.h5',
                                     sub_batch_size=1, max_n_group = int(1e5),
                                     shuffle_indexes=False):
+        from time import time
         n_batches = n_samples // sub_batch_size
         meta_cls = np.zeros((n_batches, sub_batch_size, 1), dtype=np.uint16)
         meta_shapes = np.zeros((n_batches, sub_batch_size, 2), dtype=np.uint16)
@@ -103,7 +104,8 @@ class H5MetaDataset(Dataset, ABC):
         if shuffle_indexes:
             shuffle(indexes)
         idx= 0
-        with h5py.File(hdf5_file_name, "w", fs_strategy='fsm', fs_persist='ALL', fs_threshold=1) as hdf5_file:
+        t0=time()
+        with h5py.File(h5_file_name, "w", fs_strategy='fsm', fs_persist='ALL', fs_threshold=1) as h5_file:
             for tar_dict in tar_files_contents_lists:
                 tar_file_name, tar_contents = tar_dict['tar_file'], tar_dict['contents']
                 file_path = os.path.join(tar_root_in_dir, tar_file_name)
@@ -123,20 +125,20 @@ class H5MetaDataset(Dataset, ABC):
                         dataset_key = f"samples/{str(int(batch_index) % max_n_group)}"
                         #print(f"Writing {group_key}{dataset_key}, with {batch_index}, {sample_index}")
                         sub_batch_key = 0
-                        if group_key in hdf5_file.keys():
-                            if dataset_key in hdf5_file[group_key].keys():
-                                sample = hdf5_file[group_key][dataset_key][()]
+                        if group_key in h5_file.keys():
+                            if dataset_key in h5_file[group_key].keys():
+                                sample = h5_file[group_key][dataset_key][()]
                                 sub_batch_key = len(sample)
                                 np_obj = [*sample, np_obj]
-                                del hdf5_file[group_key][dataset_key]
+                                del h5_file[group_key][dataset_key]
                             else:
                                 np_obj = [np_obj]
                             
                         else:
-                            hdf5_file.create_group(group_key)
+                            h5_file.create_group(group_key)
                             np_obj = [np_obj]
 
-                        hdf5_file[group_key].create_dataset(dataset_key, data=np_obj)
+                        h5_file[group_key].create_dataset(dataset_key, data=np_obj)
 
                         shape = lib.Transformation(im_bytes).get_dimensions()
 
@@ -145,8 +147,9 @@ class H5MetaDataset(Dataset, ABC):
                         meta_indexes[batch_index,sub_batch_key] = index
                         meta_max_shapes[batch_index,sub_batch_key] = shape
                         idx = idx + 1
-
-                        print(f"\r{int(idx):7d} of {n_samples:7d} written", end='')
+                        iter_p_sec = 1 / (time()-t0) * 1000.
+                        print(f"\r{int(idx):7d} of {n_samples:7d} written {iter_p_sec} iter/s {n_samples/iter_p_sec} sec left", end='')
+                        t0=time()
                         if idx % 1000 == 0:
                             logging.info(f"{int(idx):7d} of {n_samples:7d} written")
                 
@@ -179,10 +182,10 @@ class H5MetaDataset(Dataset, ABC):
 
 
 
-        hdf5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.h5"
+        h5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.h5"
 
         meta = H5MetaDataset.write_tar_file_data_to_hdf5(tar_root_in_dir, tar_files_contents_list,
-                                               hdf5_file_name=hdf5_file_name, sub_batch_size=sub_batch_size,
+                                               h5_file_name=h5_file_name, sub_batch_size=sub_batch_size,
                                                max_n_group=max_n_group, n_samples=index, shuffle_indexes=shuffle_tar_data)
 
         classes_list, shapes_list, indices_list, batch_shapes_list, max_idx = meta
@@ -191,17 +194,26 @@ class H5MetaDataset(Dataset, ABC):
         df.to_csv(f"{os.path.join(root_hdf5_out_dir, dataset_name)}.csv")
         data_dtype = str(bytes)
 
-        with h5py.File(hdf5_file_name, "a") as hdf5_file:
-            hdf5_file.attrs['classes'] =np.stack(classes_list)
-            hdf5_file.attrs['shapes'] =np.stack(shapes_list)
-            hdf5_file.attrs['indices'] =np.stack(indices_list)
-            hdf5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
-            hdf5_file.attrs['max_idx'] = max_idx
-            hdf5_file.attrs['num_samples'] = int(index)
-            hdf5_file.attrs['max_n_group'] = int(max_n_group)
-            hdf5_file.attrs['data_mode'] = str('image')
-            hdf5_file.attrs['data_dtype'] = str(data_dtype)
-            hdf5_file.attrs['sub_batch_size'] = int(sub_batch_size)
+        with h5py.File(h5_file_name, "a") as h5_file:
+            h5_file.create_group('attrs')
+            h5_file['attrs'].create_dataset('classes', data = np.array(classes_list[:-1], dtype=np.dtype('int32')))
+            h5_file['attrs'].create_dataset('indices', data = np.array(indices_list[:-1], dtype=np.dtype('int64')))
+            h5_file['attrs'].create_dataset('batch_shapes', data = np.array(batch_shapes_list[:-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('shapes', data = np.array(shapes_list[:-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('last_classes', data = np.array(classes_list[-1], dtype=np.dtype('int32')))
+            h5_file['attrs'].create_dataset('last_indices', data = np.array(indices_list[-1], dtype=np.dtype('int64')))
+            h5_file['attrs'].create_dataset('last_batch_shapes', data = np.array(batch_shapes_list[-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('last_shapes', data = np.array(shapes_list[-1], dtype=np.dtype('uint16')))
+            #h5_file.attrs['classes'] =np.stack(classes_list)
+            #h5_file.attrs['shapes'] =np.stack(shapes_list)
+            #h5_file.attrs['indices'] =np.stack(indices_list)
+            #h5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
+            h5_file.attrs['max_idx'] = max_idx
+            h5_file.attrs['num_samples'] = int(index)
+            h5_file.attrs['max_n_group'] = int(max_n_group)
+            h5_file.attrs['data_mode'] = str('image')
+            h5_file.attrs['data_dtype'] = str(data_dtype)
+            h5_file.attrs['sub_batch_size'] = int(sub_batch_size)
 
 
     @staticmethod
@@ -231,7 +243,7 @@ class H5MetaDataset(Dataset, ABC):
 
 
         sample_data_list = []
-        for idx in range(len(dataset_dataframe)):
+        for idx in tqdm(range(len(dataset_dataframe)), desc= "Checking Samples"):
 
             row = dataset_dataframe.loc()[idx]
             im, im_shape = H5MetaDataset.load_sample(row, data_interface)
@@ -271,38 +283,48 @@ class H5MetaDataset(Dataset, ABC):
 
             if data_mode == 'blosc':
                 sample_data_list = sorted(sample_data_list, key=lambda x: x['crop_size'], reverse=False)
-                for idx, (batch, classes, shapes, indices) in enumerate(
-                        data_interface.batchify_sorted_sample_data_list(sample_data_list, batch_size=sub_batch_size)):
+                for idx, (batch, classes, shapes, indices) in tqdm(enumerate(
+                        data_interface.batchify_sorted_sample_data_list(sample_data_list, batch_size=sub_batch_size)), desc="Writing Samples to H5"):
                     if idx%max_n_group==0:
                         group_key = str(idx//max_n_group)
                         h5_file.create_group(group_key)
                     h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch, dtype=batch.dtype,
                                                       **data_interface.blosc_opts(9, 'blosc:blosclz', 'bit'))
-                    classes_list.append(np.array(classes, dtype=np.dtype('uint16')))
+                    classes_list.append(np.array(classes, dtype=np.dtype('int32')))
                     shapes_list.append(np.array(shapes, dtype=np.dtype('uint16')))
-                    indices_list.append(np.array(indices, dtype=np.dtype('uint32')))
+                    indices_list.append(np.array(indices, dtype=np.dtype('int64')))
                     batch_shapes_list.append(np.array(batch.shape, dtype=np.dtype('uint16')))
                     num_samples+=len(batch)
                 data_dtype = batch[0].dtype
             elif data_mode == 'image':
-                for idx, (batch, classes, shapes, indices) in enumerate(
-                        data_interface.batchify_sample_data_list(sample_data_list, batch_size=sub_batch_size)):
+
+                for idx, (batch, classes, shapes, indices) in tqdm(enumerate(
+                        data_interface.batchify_sample_data_list(sample_data_list, batch_size=sub_batch_size)), desc="Writing Samples to H5"):
                     if idx%max_n_group==0:
                         group_key = str(idx//max_n_group)
                         h5_file.create_group(group_key)
                     h5_file[group_key].create_dataset(f"samples/{int(idx%max_n_group)}", data=batch)
-                    classes_list.append(np.array(classes, dtype=np.dtype('uint16')))
+                    classes_list.append(np.array(classes, dtype=np.dtype('int32')))
                     __shapes = np.array(shapes, dtype=np.dtype('uint16'))
                     shapes_list.append(__shapes)
-                    indices_list.append(np.array(indices, dtype=np.dtype('uint32')))
+                    indices_list.append(np.array(indices, dtype=np.dtype('int64')))
                     batch_shapes_list.append(__shapes.max(axis=1))
                     num_samples+=len(batch)
                 data_dtype = str(bytes)
 
-            h5_file.attrs['classes'] =np.stack(classes_list)
-            h5_file.attrs['shapes'] =np.stack(shapes_list)
-            h5_file.attrs['indices'] =np.stack(indices_list)
-            h5_file.attrs['batch_shapes'] =np.stack(batch_shapes_list)
+            h5_file.create_group('attrs')
+            h5_file['attrs'].create_dataset('classes', data = np.array(classes_list[:-1], dtype=np.dtype('int32')))
+            h5_file['attrs'].create_dataset('indices', data = np.array(indices_list[:-1], dtype=np.dtype('int64')))
+            h5_file['attrs'].create_dataset('batch_shapes', data = np.array(batch_shapes_list[:-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('shapes', data = np.array(shapes_list[:-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('last_classes', data = np.array(classes_list[-1], dtype=np.dtype('int32')))
+            h5_file['attrs'].create_dataset('last_indices', data = np.array(indices_list[-1], dtype=np.dtype('int64')))
+            h5_file['attrs'].create_dataset('last_batch_shapes', data = np.array(batch_shapes_list[-1], dtype=np.dtype('uint16')))
+            h5_file['attrs'].create_dataset('last_shapes', data = np.array(shapes_list[-1], dtype=np.dtype('uint16')))
+            
+
+            #h5_file['attrs/indices'] =np.stack(indices_list)
+            #h5_file['attrs/batch_shapes'] =np.stack(batch_shapes_list)
             h5_file.attrs['max_idx'] = int(idx)
             h5_file.attrs['num_samples'] = int(num_samples)
             h5_file.attrs['max_n_group'] = int(max_n_group)
@@ -327,6 +349,8 @@ class H5MetaDataset(Dataset, ABC):
         datalist = []
         classes = sorted(os.listdir(raw_files_dir))
 
+        total = 120434672
+
         if not no_classes:
             for cl in classes:
                 class_dir = os.path.join(raw_files_dir, cl)
@@ -336,40 +360,44 @@ class H5MetaDataset(Dataset, ABC):
                 raise NotADirectoryError('No class directories provided')
 
         i = 0
-        for cl_id, cl in enumerate(classes):
+        with tqdm(total=total) as pbar:
+            for cl_id, cl in enumerate(classes):
 
-            if no_classes:
-                class_dir = raw_files_dir
-            else:
-                class_dir = os.path.join(raw_files_dir, cl)
-            if os.path.isdir(class_dir):
-                for root, dirs, files in os.walk(class_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        meta_entry_dict = {'FilePath': file_path,
-                                           'ClassNo': cl_id,
-                                           'Index': i,
-                                           'ClassFolderName': cl}
-                        f_type = imghdr.what(file_path)
-                        if f_type is None and sndhdr.what(file_path) is not None:
-                            f_type = sndhdr.whathdr(file_path)
-                            raise NotImplementedError("Sound files not supported yet")
-                        if f_type is None:
-                            try:
-                                np.load(file_path, allow_pickle=True)
-                                f_type = 'np'
-                            except ValueError:
-                                pass
-                        if f_type is None:
-                            logging.info(f'Skipped {file_path}, not a recognized file type.')
-                            continue
-                        meta_entry_dict['FileType'] = f_type
-                        if filename_to_metadata_func is not None:
-                            meta_entry_dict.update(filename_to_metadata_func(file))
-                        datalist.append(meta_entry_dict)
-                        i += 1
-            if no_classes:
-                break
+                if no_classes:
+                    class_dir = raw_files_dir
+                else:
+                    class_dir = os.path.join(raw_files_dir, cl)
+                if os.path.isdir(class_dir):
+                    for root, dirs, files in os.walk(class_dir):
+                        for file in files:
+                            pbar.set_description(f"Working on {cl}/{file}")
+                            file_path = os.path.join(root, file)
+                            meta_entry_dict = {'FilePath': file_path,
+                                               'ClassNo': cl_id,
+                                               'Index': i,
+                                               'ClassFolderName': cl}
+                            f_type = imghdr.what(file_path)
+                            if f_type is None and sndhdr.what(file_path) is not None:
+                                f_type = sndhdr.whathdr(file_path)
+                                raise NotImplementedError("Sound files not supported yet")
+                            if f_type is None:
+                                try:
+                                    np.load(file_path, allow_pickle=True)
+                                    f_type = 'np'
+                                except ValueError:
+                                    pass
+                            if f_type is None:
+                                logging.info(f'Skipped {file_path}, not a recognized file type.')
+                                continue
+                            meta_entry_dict['FileType'] = f_type
+                            if filename_to_metadata_func is not None:
+                                meta_entry_dict.update(filename_to_metadata_func(file))
+                            datalist.append(meta_entry_dict)
+                            i += 1
+
+                            pbar.update()
+                if no_classes:
+                    break
         return pd.DataFrame(datalist)
 
     @final
@@ -398,13 +426,15 @@ class H5MetaDataset(Dataset, ABC):
 
         sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
         
-        meta_data = (torch.as_tensor(self.classes[sub_batch_idx]),
-                     torch.as_tensor(self.indices[sub_batch_idx]))
+        meta_data = (self.classes[sub_batch_idx],
+                     self.indices[sub_batch_idx])
         
         if sub_batch_slice is not None:
-            sub_batch, meta_data = sub_batch[sub_batch_slice], (meta_data[0][sub_batch_slice], meta_data[1][[sub_batch_slice]])
+            sub_batch, meta_data = sub_batch[sub_batch_slice].squeeze(), \
+                                   (np.array(meta_data[0])[sub_batch_slice].squeeze(),
+                                    np.array(meta_data[1])[sub_batch_slice].squeeze())
 
-        return sub_batch, meta_data
+        return sub_batch, np.array(meta_data)
 
     @final
     def get_meta_data_from_indices(self, indices):
@@ -413,12 +443,12 @@ class H5MetaDataset(Dataset, ABC):
         :param indices:
         :return:
         """
-        return self.metadata[self.metadata['Index'].isin(np.array(indices,dtype=np.int64))]
+        return self.metadata[self.metadata['Index'].isin(np.asarray(indices,dtype=np.int64))]
 
 
-    @staticmethod
+    @classmethod
     @final
-    def create_dataset(
+    def create_dataset(cls,
             dataset_name,
             dataset_source_root_files_dir,
             dataset_dest_root_dir,
@@ -440,11 +470,11 @@ class H5MetaDataset(Dataset, ABC):
         :param data_mode: str. either 'blosc' (lossless multi channel) or 'image' (jpeg)
         :return:
         """
-
+        ## TODO add progress Bar
         assert os.path.exists(dataset_source_root_files_dir), "Raw data root directory not found."
 
-        assert overwrite_existing or os.path.exists(dataset_dest_root_dir), \
-            f"Dataset destination directory already exists and overwrite_existing is set to {overwrite_existing}."
+        #assert overwrite_existing or not os.path.exists(dataset_dest_root_dir), \
+        #    f"Dataset destination directory already exists and overwrite_existing is set to {overwrite_existing}."
 
         assert data_mode.lower() in ['blosc', 'jpeg', 'jpg', 'image'], "data_mode must be 'blosc' or 'image'"
 
@@ -452,7 +482,7 @@ class H5MetaDataset(Dataset, ABC):
 
         if not os.path.exists(dataset_dest_root_dir):
             logging.info("Create dataset destination file directory.")
-            os.mkdir(dataset_dest_root_dir)
+            os.makedirs(dataset_dest_root_dir)
 
         dataset_h5_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.csv')
@@ -468,7 +498,7 @@ class H5MetaDataset(Dataset, ABC):
 
         if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
             logging.info('Converting raw data files to h5.')
-            H5MetaDataset.convert_samples_to_dataset(dataset_dataframe=metadata,
+            H5MetaDataset._convert_samples_to_dataset(dataset_dataframe=metadata,
                                                   dataset_destination_h5_file=dataset_h5_file_path,
                                                   sub_batch_size=dataset_sub_batch_size, data_mode=data_mode)
             logging.info('Finished converting Files')
@@ -549,16 +579,22 @@ class H5MetaDataset(Dataset, ABC):
 
         with h5py.File(self.dataset_h5_file_path, "r") as h5_file:
             self.data_mode = h5_file.attrs['data_mode']
-            self.max_n_group = h5_file.attrs['max_n_group'][()]
-            self.indices = h5_file.attrs['indices'][()].astype(int)
-            self.num_sub_batches = len(self.indices)
-            self.batch_shapes = h5_file.attrs['batch_shapes'][()]
-            self.shapes = h5_file.attrs['shapes'][()]
-            self.classes = h5_file.attrs['classes'][()].astype(int)
+            self.max_n_group = h5_file.attrs['max_n_group']
             self.sub_batch_size = h5_file.attrs['sub_batch_size']
             self.max_idx = h5_file.attrs['max_idx']
             self.num_samples= h5_file.attrs['num_samples']
             self.data_dtype = h5_file.attrs['data_dtype']
+
+            self.classes = h5_file['attrs/classes'][()].astype(int).tolist()
+            self.classes.append(h5_file['attrs/last_classes'][()].astype(int).tolist())
+            self.indices = h5_file['attrs/indices'][()].astype(int).tolist()
+            self.indices.append(h5_file['attrs/last_indices'][()].astype(int).tolist())
+            self.batch_shapes = h5_file['attrs/batch_shapes'][()].astype(int).tolist()
+            self.batch_shapes.append(h5_file['attrs/last_batch_shapes'][()].astype(int).tolist())
+            self.shapes = h5_file['attrs/shapes'][()].astype(int).tolist()
+            self.shapes.append(h5_file['attrs/last_shapes'][()].astype(int).tolist())
+
+            self.num_sub_batches = len(self.indices)
 
         self.data_interface = BloscInterface if self.data_mode=='blosc' else ImageInterface
 
