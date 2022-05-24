@@ -48,17 +48,6 @@ def collate_samples(sample):
     else:
         return collate_samples_list(sample)
 
-class TensorTuple(tuple):
-    """ Tuple for tensors.
-    """
-
-    def to(self, *args, **kwargs):
-        """ Move stored tensors to a given device
-        """
-
-        return TensorTuple((t.to(*args, **kwargs) for t in self if isinstance(t, torch.Tensor)))
-
-
 class DataLoader(object):
 
     def __init__(self, dataset: H5MetaDataset, batch_size=1, device=device_t('cpu'), num_batches_buffered=10,
