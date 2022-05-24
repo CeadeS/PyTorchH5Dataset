@@ -35,7 +35,7 @@ class BloscDataset(H5MetaDataset):
                                     shapes = original_shapes)
 
         else:
-            sample = sample_reference[()] ## dereference
+            sample = sample_reference[()] ## dereference i.e. read from file system
 
         sample = self.transforms(sample)
 
@@ -46,7 +46,7 @@ class BloscDataset(H5MetaDataset):
                 sample = self.tensor_transforms(sample)
 
 
-        return sample, meta
+        return sample, as_tensor(meta)
 
     @staticmethod
     def convert_samples_to_dataset(dataset_dataframe,
@@ -84,6 +84,7 @@ class BloscDataset(H5MetaDataset):
                  tr_crop_area_ratio_range = None,
                  output_device = device('cpu'), #cpu or cuda
                  tensor_transforms = None,
+                 force_output_dtype = None
                  ):
 
         output_device = device(output_device)
@@ -112,7 +113,8 @@ class BloscDataset(H5MetaDataset):
         ## ugly as hell,
 
         data_dtype, np_dtype = (torch.int32, np.dtype('int32')) if self.data_dtype == 'uint16' else (torch.__dict__[self.data_dtype],np.dtype(self.data_dtype))
-
+        if force_output_dtype is not None:
+            np_dtype = np.dtype(force_output_dtype)
         if tr_crop_strategy == 'original':
             transforms.append(partial(BloscInterface.sub_batch_list_as_tensor, torch_dtype=data_dtype, np_dtype=np_dtype, device=device(output_device)))
         else:

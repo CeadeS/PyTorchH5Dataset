@@ -13,5 +13,6 @@ pyturbojpeg
 cffi
 jpegtran-cffi
 simplejpeg
+tqdm
 
 

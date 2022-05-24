@@ -1,23 +1,21 @@
-from torch import tensor, as_tensor, float32, randperm, Tensor, cat, cuda, device as device_t
+from torch import tensor, as_tensor, float32, long, int32, int64, randperm, Tensor, cat, cuda, device as device_t
+from numpy import concatenate
 from torch.utils import data
 from torch.jit import script
-from pytorch_h5dataset.dataset.imageDataset import ImageDataset
-from pytorch_h5dataset.dataset.bloscDataset import BloscDataset
 from pytorch_h5dataset.dataset.metaDataset import H5MetaDataset
-from pytorch_h5dataset.utils import NormImageUint8ToFloat
 from pandas import concat
 import numpy as np
 from math import ceil
 import types
 import itertools
-
+from operator import itemgetter
 
 
 def collate_samples_tensor(sample):
     sample, meta = zip(*sample)
     cl, meta = zip(*meta)
 
-    if isinstance(meta[0], Tensor):
+    if isinstance(meta[0], Tensor) or isinstance(meta[0], np.ndarray):
         meta = cat(meta)
         out = None
         ### code from
@@ -36,22 +34,21 @@ def collate_samples_tensor(sample):
 
 def collate_samples_list(sample):
     sample, meta = zip(*sample)
-    sample = np.array(list(itertools.chain(*sample)), dtype=np.object)
+    sample = list(itertools.chain(*sample))
     cl, meta = zip(*meta)
     if isinstance(meta[0], Tensor):
         return sample, (cat(cl), cat(meta))
+    elif isinstance(meta[0], np.ndarray):
+        return sample, (concatenate(cl), concatenate(meta))
     else:
-        meta = concat(meta)
         return sample, (cat(cl), concat(meta))
 
 def collate_samples(sample):
     _sample = sample[0][0]
-    if isinstance(_sample, Tensor):
+    if isinstance(_sample, Tensor) or isinstance(_sample, np.ndarray):
         return collate_samples_tensor(sample)
     else:
         return collate_samples_list(sample)
-
-
 
 class DataLoader(object):
 
@@ -60,7 +57,7 @@ class DataLoader(object):
                  batch_sampler=None, num_workers=0, collate_fn=None,
                  pin_memory=False, drop_last=False, timeout=0,
                  worker_init_fn=None, multiprocessing_context=None, normalize=None,
-                 return_meta_indices = True):
+                 return_meta_indices = True, meta_filter=None):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.num_sub_batches_buffered = dataset.sub_batch_size
@@ -72,6 +69,8 @@ class DataLoader(object):
         assert collate_fn is None or isinstance(collate_fn, types.FunctionType), "Collate Function must be a function"
         self.collate_fn = collate_fn if collate_fn is not None else collate_samples
         self.shuffle = shuffle
+        assert meta_filter in [None, 'indices', 'labels']
+        self.meta_filter = meta_filter
         self.dataloader = data.DataLoader(dataset, batch_size=num_batches_buffered, shuffle=self.shuffle, sampler=sampler,
                                      batch_sampler=batch_sampler, num_workers=self.num_workers, collate_fn=self.collate_fn,
                                      pin_memory=self.pin_memory, drop_last=drop_last, timeout=timeout,
@@ -81,11 +80,12 @@ class DataLoader(object):
     def __iter__(self):
 
 
+
         for sample, (meta_class, meta_indices) in self.dataloader:
-            meta_indices = meta_indices.view(-1)
-            if self.pin_memory and not isinstance(sample, np.ndarray):
+            if self.pin_memory and isinstance(sample, Tensor):
                 sample = sample.pin_memory().to(self.device)
-            meta = as_tensor(meta_class.view(-1), dtype=float32, device=self.device)#.requires_grad_(True)
+            meta = as_tensor(meta_class, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
+            meta_indices = as_tensor(meta_indices, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
             if self.normalize is not None:
                 sample = self.normalize(sample)
             if self.shuffle:
@@ -94,15 +94,26 @@ class DataLoader(object):
                 perm = tensor(range(len(sample)))
             for i in range(0, perm.size(0), self.batch_size):
                 rand_batch_indexes = perm[i:i + self.batch_size]
-                x = sample[rand_batch_indexes]
-                if len(rand_batch_indexes) == 1:
-                    x =  np.expand_dims(x, axis=0)
-                y = meta[rand_batch_indexes]
-                if self.return_meta_indices:
-                    yield x,(y,meta_indices[rand_batch_indexes])
+                if isinstance(sample, list):
+                    if len(rand_batch_indexes) <2:
+                        x = [sample[rand_batch_indexes[0]]] # case where only one sample is selected # keep type list
+                    else:
+                        x = itemgetter(*rand_batch_indexes)(sample) # in last test faster than map
                 else:
-                    yield x,(y, self.dataset.get_meta_data_from_indices(meta_indices[rand_batch_indexes]))
-        self.dataset.script_transform = None
+                    x = sample[rand_batch_indexes]
+                    if len(rand_batch_indexes) == 1:
+                        x =  np.expand_dims(x, axis=0)
+                    x = as_tensor(x, device=self.device)
+                y = meta[rand_batch_indexes]
+                if self.meta_filter is not None:
+                    if self.meta_filter == 'labels':
+                        yield x, y
+                    else:
+                        yield x, meta_indices[rand_batch_indexes]
+                if self.return_meta_indices:
+                    yield x,(y, meta_indices[rand_batch_indexes])
+                else:
+                    yield x,(y, self.dataset.get_meta_data_from_indices(np.asarray(meta_indices[rand_batch_indexes].cpu())))
 
     def __len__(self):
         return ceil(self.dataset.num_samples / self.batch_size)

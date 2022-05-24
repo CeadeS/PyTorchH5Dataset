@@ -102,8 +102,8 @@ class BloscInterface(DataInterface):
                 h_offset = max(0, int((batch_height - crop_height) * torch.rand(1).item()))
                 w_offset = max(0, int((batch_width - crop_width) * torch.rand(1).item()))
             else:
-                h_offset = max(0, int(batch_height - crop_height // 2))
-                w_offset = max(0, int(batch_width - crop_width // 2))
+                h_offset = max(0, int(batch_height - crop_height ) // 2)
+                w_offset = max(0, int(batch_width - crop_width) // 2)
             w_end = min((batch_width, w_offset + crop_width))
             h_end = min((batch_height, h_offset + crop_height))
             return sub_batch[..., h_offset:h_end, w_offset:w_end]
@@ -183,6 +183,9 @@ class BloscInterface(DataInterface):
     @staticmethod
     def crop_original_samples_from_batch(batch, shapes, batch_height = None, batch_width = None):
         batch_shape = batch[0].shape
+        if not isinstance(shapes[0], list) and not isinstance(shapes[0], tuple):
+            shapes = [shapes]
+            batch = batch[None,...]
         imlist = []
         for idx, sample_shape in enumerate(shapes):
             beg_idx_1 = (batch_shape[-2] - sample_shape[-2]) // 2
