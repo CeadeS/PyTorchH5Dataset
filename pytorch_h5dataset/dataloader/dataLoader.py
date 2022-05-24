@@ -1,4 +1,5 @@
 from torch import tensor, as_tensor, float32, long, int32, int64, randperm, Tensor, cat, cuda, device as device_t
+from numpy import concatenate
 from torch.utils import data
 from torch.jit import script
 from pytorch_h5dataset.dataset.metaDataset import H5MetaDataset
@@ -7,7 +8,7 @@ import numpy as np
 from math import ceil
 import types
 import itertools
-
+from operator import itemgetter
 
 
 def collate_samples_tensor(sample):
@@ -33,17 +34,18 @@ def collate_samples_tensor(sample):
 
 def collate_samples_list(sample):
     sample, meta = zip(*sample)
-    sample = np.array(list(itertools.chain(*sample)), dtype=np.object)
+    sample = list(itertools.chain(*sample))
     cl, meta = zip(*meta)
     if isinstance(meta[0], Tensor):
         return sample, (cat(cl), cat(meta))
+    elif isinstance(meta[0], np.ndarray):
+        return sample, (concatenate(cl), concatenate(meta))
     else:
-        meta = concat(meta)
         return sample, (cat(cl), concat(meta))
 
 def collate_samples(sample):
     _sample = sample[0][0]
-    if isinstance(_sample, Tensor):
+    if isinstance(_sample, Tensor) or isinstance(_sample, np.ndarray):
         return collate_samples_tensor(sample)
     else:
         return collate_samples_list(sample)
@@ -80,10 +82,10 @@ class DataLoader(object):
 
 
         for sample, (meta_class, meta_indices) in self.dataloader:
-            if self.pin_memory and not isinstance(sample, np.ndarray):
+            if self.pin_memory and isinstance(sample, Tensor):
                 sample = sample.pin_memory().to(self.device)
-            meta = as_tensor(meta_class.view(-1), dtype=int64, device=self.device)#.requires_grad_(True)
-            meta_indices = as_tensor(meta_indices.view(-1), dtype=int64, device=self.device)#.requires_grad_(True)
+            meta = as_tensor(meta_class, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
+            meta_indices = as_tensor(meta_indices, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
             if self.normalize is not None:
                 sample = self.normalize(sample)
             if self.shuffle:
@@ -92,10 +94,16 @@ class DataLoader(object):
                 perm = tensor(range(len(sample)))
             for i in range(0, perm.size(0), self.batch_size):
                 rand_batch_indexes = perm[i:i + self.batch_size]
-                x = sample[rand_batch_indexes]
-                if len(rand_batch_indexes) == 1:
-                    x =  np.expand_dims(x, axis=0)
-                x = as_tensor(x, device=self.device)
+                if isinstance(sample, list):
+                    if len(rand_batch_indexes) <2:
+                        x = [sample[rand_batch_indexes[0]]] # case where only one sample is selected # keep type list
+                    else:
+                        x = itemgetter(*rand_batch_indexes)(sample) # in last test faster than map
+                else:
+                    x = sample[rand_batch_indexes]
+                    if len(rand_batch_indexes) == 1:
+                        x =  np.expand_dims(x, axis=0)
+                    x = as_tensor(x, device=self.device)
                 y = meta[rand_batch_indexes]
                 if self.meta_filter is not None:
                     if self.meta_filter == 'labels':

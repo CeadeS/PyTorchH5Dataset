@@ -78,21 +78,22 @@ class TestDataloader(TestCase):
                                tr_crop_size=(244,244),
                                tr_crop_area_ratio_range=(0.75,1.0))
         dataloader = DataLoader(dataset=dataset,
-                                device='cpu:0', batch_size=1,
+                                device='cpu:0', batch_size=2,
                                 return_meta_indices=True,
                                 pin_memory=True,
                                 num_workers=0, collate_fn=None)
         for sample, (meta, meta_data) in dataloader:
-            self.assertEqual(len(sample),1)
+
+            self.assertEqual(len(sample),2)
             self.assertIsInstance(meta_data, Tensor)
 
         dataloader = DataLoader(dataset=dataset,
-                                device='cpu:0', batch_size=2,
+                                device='cpu:0', batch_size=1,
                                 return_meta_indices=False,
                                 pin_memory=True,
                                 num_workers=0, collate_fn=None)
         for sample, (meta, meta_data) in dataloader:
-            self.assertEqual(len(sample),2)
+            self.assertEqual(len(sample),1)
             self.assertIsInstance(meta_data, pd.DataFrame)
 
 
