@@ -1,6 +1,7 @@
 from abc import ABC, ABCMeta, abstractmethod
 from typing import final
 from torch.utils.data import Dataset
+from math import ceil
 import numpy as np
 import h5py, hdf5plugin, tables  # fixes plugins not found Exceptions
 from math import sqrt
@@ -95,7 +96,7 @@ class H5MetaDataset(Dataset, ABC):
                                     sub_batch_size=1, max_n_group = int(1e5),
                                     shuffle_indexes=False):
         from time import time
-        n_batches = n_samples // sub_batch_size
+        n_batches = ceil(n_samples / sub_batch_size)
         meta_cls = np.zeros((n_batches, sub_batch_size, 1), dtype=np.uint16)
         meta_shapes = np.zeros((n_batches, sub_batch_size, 2), dtype=np.uint16)
         meta_indexes = np.zeros((n_batches, sub_batch_size, 1), dtype=np.uint16)
