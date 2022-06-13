@@ -32,7 +32,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(len(test_benchmarker .get_stats_df()),100)
 
     def test_decorator_iterator_func(self):
-        test_benchmarker  = Benchmarker()
+        test_benchmarker = Benchmarker()
 
         @test_benchmarker.decorate_iterator_func
         def iterator():

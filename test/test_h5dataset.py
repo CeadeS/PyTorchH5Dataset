@@ -678,28 +678,32 @@ class TestH5Dataset(TestCase):
 
     def test_create_metadata_for_dataset(self):
 
-        dataframe = _H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/')
+        dataframe = _H5Dataset.create_metadata_for_jpeg_dataset('./test/data/images/rgb/')
         self.assertEqual(len(dataframe),2)
         self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType']))
 
-        dataframe = _H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/', lambda a : dict(zip(['Filename', 'class'], a[:-4].split('_'))))
+        dataframe = _H5Dataset.create_metadata_for_jpeg_dataset('./test/data/images/rgb/', lambda a: dict(
+            zip(['Filename', 'class'], a[:-4].split('_'))))
         self.assertEqual(len(dataframe),2)
         self.assertEqual(dataframe.loc[1]['ClassNo'],1)
         self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
 
 
-        dataframe = _H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/', lambda a : dict(zip(['Filename', 'class'], a[:-4].split('_'))), True)
+        dataframe = _H5Dataset.create_metadata_for_jpeg_dataset('./test/data/images/rgb/', lambda a: dict(
+            zip(['Filename', 'class'], a[:-4].split('_'))), True)
         self.assertEqual(dataframe.loc[1]['ClassNo'],0)
         self.assertEqual(len(dataframe),2)
         self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
 
 
-        dataframe = _H5Dataset.create_metadata_for_dataset('./test/data/images/', lambda a : dict(zip(['Filename', 'class'], a[:-4].split('_'))), True)
+        dataframe = _H5Dataset.create_metadata_for_jpeg_dataset('./test/data/images/', lambda a: dict(
+            zip(['Filename', 'class'], a[:-4].split('_'))), True)
         self.assertEqual(dataframe.loc[1]['ClassNo'],0)
         self.assertEqual(len(dataframe),4)
         self.assertTrue(all(dataframe.columns.values == ['FilePath', 'ClassNo', 'Index', 'ClassFolderName', 'FileType', 'Filename', 'class']))
 
-        dataframe = _H5Dataset.create_metadata_for_dataset('./test/data/images/rgb/a/', lambda a : dict(zip(['Filename', 'class'], a[:-4].split('_'))), True)
+        dataframe = _H5Dataset.create_metadata_for_jpeg_dataset('./test/data/images/rgb/a/', lambda a: dict(
+            zip(['Filename', 'class'], a[:-4].split('_'))), True)
         self.assertEqual(dataframe.loc[0]['ClassNo'],0)
         self.assertEqual(len(dataframe),1)
 

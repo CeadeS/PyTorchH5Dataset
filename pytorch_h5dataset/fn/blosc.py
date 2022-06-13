@@ -31,7 +31,7 @@ class BloscInterface(DataInterface):
     @staticmethod
     def load_sample(sample):
         from PIL import Image
-        from skimage import io as skio
+        from tifffile import imread
         import io
 
         path_key = 'path' if 'path' in sample.keys() else 'FilePath'
@@ -42,7 +42,7 @@ class BloscInterface(DataInterface):
             file_type = imghdr.what(sample[path_key])
 
         if file_type in ['tif', 'tiff']:
-            spl = skio.imread(sample[path_key])
+            spl = imread(sample[path_key])
             spl = np.moveaxis(np.array(spl), -1, 0)
             return spl, spl.shape
         elif file_type in ['numpy', 'np']:

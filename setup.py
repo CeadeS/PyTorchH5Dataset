@@ -1,27 +1,29 @@
 from setuptools import setup, find_packages
+from distutils.util import convert_path
+
+with open("README.md") as f:
+    readme = f.read()
+
+with open("requirements.txt") as f:
+    requirements = f.read().split()
+
+main_ns = {}
+ver_path = convert_path('pytorch_h5dataset/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
 
 setup(
     name='pytorch_h5dataset',
-    version='0.2.4',
+    version=main_ns['__version__'],
     packages=find_packages(),
     url='https://github.com/CeadeS/PyTorchH5Dataset',
     license='BSD-3-Clause License',
     author='Martin Hofmann',
     author_email='Martin.Hofmann@tu-ilmenau.de',
     description='Accelerated data loading H5 dataset module for  PyTorch.',
-    install_requires=[
-       'numpy',
-       'h5py>=3.3.0',
-       'hdf5plugin',
-       'pandas',
-       'Pillow',
-       'tables',
-       'torch',
-       'scikit-image',
-       'torchvision',
-        'psutil',
-        'tqdm',
-       ],
+    long_description=readme,
+    long_description_content_type="text/markdown",
+    install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
