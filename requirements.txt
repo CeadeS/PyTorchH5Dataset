@@ -14,5 +14,6 @@ cffi
 jpegtran-cffi
 simplejpeg
 tqdm
+tar_dir_indexer
 
 

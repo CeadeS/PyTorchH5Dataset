@@ -36,28 +36,36 @@ class BloscInterface(DataInterface):
 
         path_key = 'path' if 'path' in sample.keys() else 'FilePath'
         type_key = 'type' if 'type' in sample.keys() else 'FileType'
-        try:
-            file_type = sample[type_key]
-        except KeyError:
-            file_type = imghdr.what(sample[path_key])
 
-        if file_type in ['tif', 'tiff']:
-            spl = imread(sample[path_key])
-            spl = np.moveaxis(np.array(spl), -1, 0)
-            return spl, spl.shape
-        elif file_type in ['numpy', 'np']:
-            spl = np.load(sample[path_key])
-            return spl, spl.shape
+        if 'node' not in sample.keys():
+            try:
+                file_type = sample[type_key]
+            except KeyError:
+                file_type = imghdr.what(sample[path_key])
+
+            if file_type in ['tif', 'tiff']:
+                spl = imread(sample[path_key])
+                spl = np.moveaxis(np.array(spl), -1, 0)
+                return spl, spl.shape
+            elif file_type in ['numpy', 'np']:
+                spl = np.load(sample[path_key])
+                return spl, spl.shape
+            else:
+                with open(sample[path_key], 'rb') as f:
+                    im = Image.open(io.BytesIO(f.read()))
+                    if len(im.getbands()) < 3:
+                        rgbimg = Image.new("RGB", im.size)
+                        rgbimg.paste(im)
+                        im = rgbimg
+                    im = np.moveaxis(np.array(im), -1, 0)
+                return im, im.shape
         else:
-            with open(sample[path_key], 'rb') as f:
-                im = Image.open(io.BytesIO(f.read()))
-                if len(im.getbands()) < 3:
-                    rgbimg = Image.new("RGB", im.size)
-                    rgbimg.paste(im)
-                    im = rgbimg
-                im = np.array(im)
-                im = np.moveaxis(np.array(im), -1, 0)
-            return im, im.shape
+            if sample['type'] is not None:
+                im = np.moveaxis(np.array(sample['node'].get_data()), -1, 0)
+                return im, im.shape
+        return None, None
+
+
 
     @staticmethod
     def stack_batch_data_padded(batch_list):
@@ -68,6 +76,8 @@ class BloscInterface(DataInterface):
         for sample_idx, sample in enumerate(batch_list):
             sample_shape = sample['shape']
             im, im_shape = BloscInterface.load_sample(sample)  #########################
+            if im is None:
+                continue
             if batch_array is None:
                 batch_dimensions = ([len(batch_list)] + [im_shape[0], max_height, max_width])
                 batch_array = np.zeros(batch_dimensions, dtype=np.array(im).dtype)

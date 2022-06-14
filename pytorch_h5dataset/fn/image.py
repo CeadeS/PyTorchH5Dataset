@@ -27,31 +27,49 @@ class ImageInterface(DataInterface):
         path_key = 'path' if 'path' in sample.keys() else 'FilePath'
         type_key = 'type' if 'type' in sample.keys() else 'FileType'
 
-        try:
-            file_type = sample[type_key]
-        except KeyError:
-            file_type = imghdr.what(sample[path_key])
-        if file_type in ['tif', 'tiff']:
-            im_bytes = encode(skio.imread(sample[path_key]), quality=jpeg_quality)
-            return im_bytes
-        elif file_type in ['numpy', 'np']:
-            im_bytes = encode(np.load(sample[path_key]), quality=jpeg_quality)
-            return im_bytes
+        if 'node' not in sample.keys():
+            try:
+                file_type = sample[type_key]
+            except KeyError:
+                file_type = imghdr.what(sample[path_key])
+            if file_type in ['tif', 'tiff']:
+                im_bytes = encode(skio.imread(sample[path_key]), quality=jpeg_quality)
+                return im_bytes
+            elif file_type in ['numpy', 'np']:
+                im_bytes = encode(np.load(sample[path_key]), quality=jpeg_quality)
+                return im_bytes
+            else:
+                with open(sample[path_key], 'rb') as f:
+                    im_bytes = f.read()
+                return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
         else:
-            with open(sample[path_key], 'rb') as f:
-                im_bytes = f.read()            
-            return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
+            if sample['type'] == 'jpeg':
+                with sample['node'].get_file_object() as io_obj:
+                    im_bytes = io_obj.read()
+                return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
+        return None, None
 
     @staticmethod
     def batchify_sample_data_list(sample_data_list, batch_size=50):
         for start_idx in range(0, len(sample_data_list), batch_size):
             batch_list = sample_data_list[start_idx:start_idx + batch_size]
-            classes, shapes, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
+            classes, _, indices = zip(*((s['class'], s['shape'], s['index']) for s in batch_list))
             im_list = []
+            shapes = []
             for sample_idx, sample in enumerate(batch_list):
-                im, _ = ImageInterface.load_sample(sample)
+                im, im_shape = ImageInterface.load_sample(sample)
+                if im is None:
+                    continue
+                sample.update({
+                    'height': im_shape[-2],
+                    'width': im_shape[-1],
+                    'crop_size': np.prod(im_shape),
+                    'shape': im_shape,
+                })
+                shapes.append(im_shape)
                 im_list.append(im)
             shapes = np.array(shapes, dtype=np.uint16)
+
             yield im_list, np.array(classes, dtype=np.uint16), \
                   np.array(shapes, dtype=np.uint16), np.array(indices, dtype=np.uint32)
 

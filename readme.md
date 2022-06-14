@@ -31,7 +31,7 @@ can be provided by a data frame or the file name.
 # Installation
 pip install
 ```bash
-pip install pytorch-h5dataset==0.2.2
+pip install pytorch-h5dataset
 ```
 
 dev intall
@@ -64,24 +64,24 @@ from torch import nn, float32, as_tensor
 from torch.nn import MSELoss
 from torch.jit import script
 from time import time
-from pytorch_h5dataset.utils import NormImage
+from pytorch_h5dataset.utils import NormImageUint8ToFloat
 from numpy import prod
 
-norm = script(NormImage()).cuda()
+norm = script(NormImageUint8ToFloat()).cuda()
 
-from pytorch_h5dataset import _H5Dataset
-from pytorch_h5dataset import H5DataLoader
+from pytorch_h5dataset.dataset import imageDataset, bloscDataset
+from pytorch_h5dataset.dataloader import dataLoader, daliDataLoader
 
 batch_size = 100
 epochs = 100
 device = 'cuda:0'
-dataset = _H5Dataset(dataset_name="test_dataset",
+dataset = bloscDataset.BloscDataset(dataset_name="test_dataset",
                     dataset_root="path/to/dataset",  # empl: '../test/data/tmp/dataset/h5',
                     transforms=Resize((244, 244)),
                     loading_crop_size=(0.73, 1.33),  # cropped aspect ratio
                     loading_crop_area_ratio_range=244 * 244)  # number of cropped px read more at definition of random_located_sized_crop_function
 
-dataloader = H5DataLoader(dataset=dataset,
+dataloader = dataLoader(dataset=dataset,
                           device='cpu:0', batch_size=1,
                           return_meta_indices=True,
                           pin_memory=True,

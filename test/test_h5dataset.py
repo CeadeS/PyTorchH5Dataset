@@ -949,3 +949,63 @@ class TestH5Dataset(TestCase):
         im, meta = dataset[0,:]
         #self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
 
+
+    def test__new_convert_samples_to_dataset(self):
+        import pandas as pd
+        import shutil as sh
+        import numpy as np
+
+
+        _H5Dataset._new_convert_samples_to_dataset('test/data/images/rgb',
+                                                    data_mode='blosc',
+                                                   dataset_destination='./test/data/tmp/dataset/h5/',
+                                                   dataset_name='test_dataset',
+                                              sub_batch_size=1)
+
+        dataset = _H5Dataset('test_dataset', './test/data/tmp/dataset/h5/',
+                             tr_crop_strategy='random',
+                             tr_crop_size=(0.8,1.3),
+                             tr_crop_area_ratio_range=244*244)
+        im, (cl, idx) = dataset[0]
+
+        self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
+
+
+        del dataset
+
+        _H5Dataset._new_convert_samples_to_dataset('test/data/images/rgb',
+                                               path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[4]},
+                                               dataset_destination='./test/data/tmp/dataset/h5/',
+                                               dataset_name='test_dataset_image',
+                                               data_mode='image',
+                                               sub_batch_size=1)
+
+        sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset_image.csv')
+        dataset = imageDataset.ImageDataset('test_dataset_image', './test/data/tmp/dataset/h5/',
+                                            decode='cpu',
+                                            tr_crop_strategy='random',
+                                            tr_crop_size=(0.8,1.3),
+                                            tr_crop_area_ratio_range=244*244)
+        im, (cl, idx) = dataset[0]
+        self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
+        self.assertEqual(cl.item(), 0)
+        del dataset
+
+        _H5Dataset._new_convert_samples_to_dataset('test/data/images/rgb',
+                                                   path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[4]},
+                                                   dataset_destination='./test/data/tmp/dataset/h5/',
+                                                   dataset_name='test_dataset_image',
+                                                   data_mode='image',
+                                                   sub_batch_size=2)
+
+        dataset = imageDataset.ImageDataset('test_dataset_image', './test/data/tmp/dataset/h5/',
+                                            decode='cpu',
+                                            tr_crop_strategy='random',
+                                            tr_crop_size=(0.8,1.3),
+                                            tr_crop_area_ratio_range=244*244)
+        im, (cl, idx) = dataset[0]
+
+        self.assertAlmostEqual(np.prod(im[0].shape)/10000, 3*244*244/10000,0)
+        self.assertListEqual(cl.tolist(), [0,1])
+        del dataset
+

@@ -21,6 +21,16 @@ class ImageDataset(H5MetaDataset):
         return sample, meta
 
     @staticmethod
+    def convert_tar_dir_to_dataset(data_root, path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[0]},
+                                   dataset_destination='./data', dataset_name = 'test_dataset',
+                                   sub_batch_size=50, max_n_group=10):
+
+        ImageDataset._convert_tar_dir_to_dataset(
+            data_root, path_to_metadata_function=path_to_metadata_function,
+            dataset_destination=dataset_destination, dataset_name = dataset_name ,
+            sub_batch_size=sub_batch_size, data_mode='image', max_n_group=max_n_group)
+
+    @staticmethod
     def convert_samples_to_dataset(dataset_dataframe,
                                    dataset_destination_h5_file='./data/test_dataset.h5',
                                    sub_batch_size=50, max_n_group= 10):
