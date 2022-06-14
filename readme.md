@@ -116,7 +116,6 @@ The Benchmark will download the coco dataset, convert it and run some time measu
 ./scripts provides also a jupyter notebook collecting more information.
 ```shell
 git clone https://github.com/CeadeS/PyTorchH5Dataset.git
-cd PyTorchH5Dataset
 pip install -e .
 
 cd scripts/

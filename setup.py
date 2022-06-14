@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 from distutils.util import convert_path
 
-with open("README.md") as f:
+with open("readme.md") as f:
     readme = f.read()
 
 with open("requirements.txt") as f:
