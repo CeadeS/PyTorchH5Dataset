@@ -71,7 +71,8 @@ class ImageDataset(H5MetaDataset):
 
         output_device = device(output_device)
 
-        super(ImageDataset, self).__init__(dataset_name, dataset_root, split_mode, split_ratio, split_number)
+        super(ImageDataset, self).__init__(dataset_name=dataset_name, dataset_root=dataset_root, split_mode=split_mode, split_ratio=split_ratio, split_number=split_number)
+
         assert self.data_dtype == str(bytes)
 
         if float(version.cuda) < 11.6 and decode is not None and decode.type == 'cuda':
