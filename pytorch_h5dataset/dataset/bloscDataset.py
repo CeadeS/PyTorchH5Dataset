@@ -105,7 +105,11 @@ class BloscDataset(H5MetaDataset):
         self.crop_function = None
         self.__crop_strategy = tr_crop_strategy
 
-        super(BloscDataset, self).__init__(dataset_name=dataset_name, dataset_root=dataset_root, split_mode=split_mode, split_ratio=split_ratio, split_number=split_number)
+        super(BloscDataset, self).__init__( dataset_name=dataset_name,
+                                            dataset_root=dataset_root,
+                                            split_mode=split_mode,
+                                            split_ratio=split_ratio,
+                                            split_number=split_number)
 
         assert self.data_dtype != str(bytes)
         #BLOSC Transforms
