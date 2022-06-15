@@ -639,8 +639,7 @@ class H5MetaDataset(Dataset, ABC):
         metadata_file_path = os.path.join(dataset_root, dataset_name + '.csv')
         self.h5_file = None
 
-        assert split_number >= 0 and isinstance(split_number,
-                                                int), f"split_number musst be a nonzero integer value but it is {split_number}"
+        assert split_number >= 0 and isinstance(split_number, int), f"split_number musst be a nonzero integer value but it is {split_number}"
         assert os.path.isfile(dataset_h5_file_path) and os.path.isfile(
             metadata_file_path), f"found in {dataset_root} directory. Call create_dataset first."
         assert split_mode.lower() in ['montecarlo', 'full', 'cross_val',
