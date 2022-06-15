@@ -43,5 +43,5 @@ class MyTestCase(unittest.TestCase):
 
         for _ in  enumerate(iterator()):
             pass
-        self.assertEqual(len(test_benchmarker .get_stats_df()),100)
+        self.assertEqual(len(test_benchmarker.get_stats_df()),100)
 

@@ -115,8 +115,7 @@ print(loss, num_out)
 The Benchmark will download the coco dataset, convert it and run some time measurements.
 ./scripts provides also a jupyter notebook collecting more information.
 ```shell
-git clone https://github.com/CeadeS/PyTorchH5Dataset.git
-pip install -e .
+pip3 install -e -U git+https://github.com/CeadeS/PyTorchH5Dataset.git@dev
 
 cd scripts/
 python run_benchmark.py
