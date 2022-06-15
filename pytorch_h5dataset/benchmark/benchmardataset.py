@@ -147,8 +147,7 @@ class BenchmarkDataset:
                                   )
 
         self.h5_transform = nn.Sequential(transforms.Resize(crop_size))
-        self.h5dataset = BloscDataset(f'coco2017_{mode}', fr'{dataset_root}/h5', crop_ratio=crop_ratio, crop_area=crop_area, tensor_transforms=self.h5_transform)
-
+        self.h5dataset = BloscDataset(f'coco2017_{mode}', fr'{dataset_root}/h5', tr_crop_strategy='random', tr_crop_size=crop_ratio, tr_crop_area_ratio_range=crop_area, tensor_transforms=self.h5_transform)
 
 
         self.im_folder_transforms = transforms.Compose([
