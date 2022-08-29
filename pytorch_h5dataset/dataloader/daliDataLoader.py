@@ -82,7 +82,7 @@ def augment_function(jpegs):
 
 
 def get_pipeline(dataset, transform_fn = get_decode_crop_transform_fn(), batch_size=10, num_threads=5, device_id=0, num_workers=5):
-    prep = pipeline_def(batch_size=10, num_threads=5, device_id=0, py_num_workers=5, py_start_method='spawn')
+    prep = pipeline_def(batch_size=batch_size, num_threads=num_threads, device_id=device_id, py_num_workers=num_workers, py_start_method='spawn')
     return prep(get_wrapper_pipeline(dataset, transform_fn ,batch_size))
 
 
@@ -110,7 +110,7 @@ class DaliDataLoader(object):
 
         did = device.index if device.index else 0
 
-        pipeline = get_pipeline(dataset, dali_transform_fn)
+        pipeline = get_pipeline(dataset, dali_transform_fn, batch_size=batch_size, num_threads=num_threads, num_workers=num_workers)
         pipeline = pipeline()
         pipeline.build()
 
@@ -150,7 +150,7 @@ class DaliDataLoader(object):
         self.dataset.script_transform = None
 
     def __len__(self):
-        return ceil(self.dataset.num_samples / self.batch_size)
+        return ceil(len(self.dataset)* self.dataset.sub_batch_size / self.batch_size)
 
 batch_size = 10
 

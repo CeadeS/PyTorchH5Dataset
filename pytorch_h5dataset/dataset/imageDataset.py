@@ -12,23 +12,40 @@ class ImageDataset(H5MetaDataset):
 
 
     def __getitem__(self, sub_batch_idx):
-        sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
-        sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
-        
-        if self.tensor_transforms is not None:
-            sample = self.tensor_transforms(sample)
+        try:
+            sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
+            sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
 
-        return sample, meta
+            if self.tensor_transforms is not None:
+                if isinstance(sample, list):
+                    sample = [self.tensor_transforms(s) for s in sample]
+                else:
+                    sample = self.tensor_transforms(sample)
+
+            return sample, meta
+        except:
+            sub_batch_idx = 0
+            sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
+            sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
+
+            if self.tensor_transforms is not None:
+                if isinstance(sample, list):
+                    sample = [self.tensor_transforms(s) for s in sample]
+                else:
+                    sample = self.tensor_transforms(sample)
+
+            return sample, meta
+
 
     @staticmethod
     def convert_tar_dir_to_dataset(data_root, path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[0]},
                                    dataset_destination='./data', dataset_name = 'test_dataset',
-                                   sub_batch_size=50, max_n_group=10):
+                                   sub_batch_size=50, max_n_group=10, test=False):
 
         ImageDataset._convert_tar_dir_to_dataset(
             data_root, path_to_metadata_function=path_to_metadata_function,
             dataset_destination=dataset_destination, dataset_name = dataset_name ,
-            sub_batch_size=sub_batch_size, data_mode='image', max_n_group=max_n_group)
+            sub_batch_size=sub_batch_size, data_mode='image', max_n_group=max_n_group, test=test)
 
     @staticmethod
     def convert_samples_to_dataset(dataset_dataframe,
@@ -71,14 +88,11 @@ class ImageDataset(H5MetaDataset):
 
         output_device = device(output_device)
 
-        super(ImageDataset, self).__init__(
-                                             dataset_name=dataset_name,
+        super(ImageDataset, self).__init__( dataset_name=dataset_name,
                                              dataset_root=dataset_root,
                                              split_mode=split_mode,
                                              split_ratio=split_ratio,
                                              split_number=split_number)
-
-        assert self.data_dtype == str(bytes)
 
         if float(version.cuda) < 11.6 and decode is not None and decode.type == 'cuda':
             s = str(f"Function not available for cuda version {version.cuda} is < 11.6, using cpu instead")
@@ -115,8 +129,8 @@ class ImageDataset(H5MetaDataset):
                 transforms.append(image.ImageInterface.random_h_flip)
 
         if decode is not None:
-            if 'cuda' == decode.type:
-                transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(decode)))
+            #if 'cuda' == decode.type:
+            #    transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(decode)))
             transforms.append(partial(image.ImageInterface.sub_batch_decode, device=device(decode)))
 
 
@@ -124,10 +138,10 @@ class ImageDataset(H5MetaDataset):
         if tr_output_size is not None and decode is not None:
             transforms.append(partial(image.ImageInterface.scale_torch, heights = tr_output_size[0], widths = tr_output_size[1]))
             transforms.append(stack)
-            transforms.append(partial(as_tensor, device=device(output_device)))
+            #transforms.append(partial(as_tensor, device=device(output_device)))
 
-        elif output_device.type == 'cuda' or decode is not None or tensor_transforms is not None:
-            transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
+        #elif output_device.type == 'cuda' or decode is not None or tensor_transforms is not None:
+        #    transforms.append(partial(image.ImageInterface.sub_batch_as_tensor, device=device(output_device)))
 
 
 

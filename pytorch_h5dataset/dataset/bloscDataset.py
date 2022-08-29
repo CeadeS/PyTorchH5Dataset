@@ -51,11 +51,11 @@ class BloscDataset(H5MetaDataset):
     @staticmethod
     def convert_tar_dir_to_dataset(data_root, path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[0]},
                                     dataset_destination='./data', dataset_name = 'test_dataset',
-                                    sub_batch_size=50, max_n_group=10):
+                                    sub_batch_size=50, max_n_group=10, test=False):
         BloscDataset._convert_tar_dir_to_dataset(
             data_root, path_to_metadata_function=path_to_metadata_function,
             dataset_destination=dataset_destination, dataset_name = dataset_name ,
-            sub_batch_size=sub_batch_size, data_mode='blosc', max_n_group=max_n_group)
+            sub_batch_size=sub_batch_size, data_mode='blosc', max_n_group=max_n_group, test=test)
 
 
     @staticmethod

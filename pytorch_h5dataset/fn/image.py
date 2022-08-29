@@ -6,8 +6,9 @@ from jpegtran import lib
 from simplejpeg import encode_jpeg as encode
 from simplejpeg import decode_jpeg as jpeg_decode
 from torchvision.io import decode_image as torch_decode
+import torchvision
 from torchvision.transforms.functional import resize
-from torch import as_tensor, uint8
+from torch import as_tensor, uint8, frombuffer
 
 import torch
 
@@ -41,11 +42,13 @@ class ImageInterface(DataInterface):
             else:
                 with open(sample[path_key], 'rb') as f:
                     im_bytes = f.read()
+                #return im_bytes, lib.Transformation(im_bytes).get_dimensions()
                 return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
         else:
             if sample['type'] == 'jpeg':
                 with sample['node'].get_file_object() as io_obj:
                     im_bytes = io_obj.read()
+                #return im_bytes, lib.Transformation(im_bytes).get_dimensions()
                 return np.frombuffer(im_bytes, dtype=f'S{len(im_bytes)}'), lib.Transformation(im_bytes).get_dimensions()
         return None, None
 
@@ -96,7 +99,7 @@ class ImageInterface(DataInterface):
                 w_offsets.append(w_offset)
                 h_ends.append(h_end)
                 w_ends.append(w_end)
-                return ImageInterface.crop(sub_batch, h_offsets, h_ends, w_offsets, w_ends)
+            return ImageInterface.crop(sub_batch, h_offsets, h_ends, w_offsets, w_ends)
 
         return crop_func
 
@@ -186,10 +189,13 @@ class ImageInterface(DataInterface):
                 width.append(int(_width))
                 height.append(int(_height))
         for i in range(len(sub_batch)):
-            crop_width = int(w_end[i] - w_offset[i])
-            crop_height = int(h_end[i] - h_offset[i])
-            result[i] = [lib.Transformation(sub_batch[i][0]).crop(w_offset[i], h_offset[i], min(crop_width, width[i]),
-                                                              min(crop_height, height[i]))]
+            crop_width = int((int(min(w_end[i], width[i]) - w_offset[i])//16)*16)
+            crop_height = int((int(min(h_end[i], height[i]) - h_offset[i])//16)*16)
+            try:
+                result[i] = [lib.Transformation(sub_batch[i][0]).crop(int((w_offset[i]//16)*16), int((h_offset[i]//16)*16), crop_width,
+                                                              crop_height)]
+            except:
+                result[i] = sub_batch[i]
         return result
 
     @staticmethod
@@ -241,7 +247,7 @@ class ImageInterface(DataInterface):
         rands = torch.FloatTensor(len(sub_batch)).uniform_(*scale_range)
         width, height = [], []
         for i in range(len(sub_batch)):
-            _width, _height = lib.Transformation(sub_batch[i]).get_dimensions()
+            _width, _height = lib.Transformation(sub_batch[i][0]).get_dimensions()
             width.append(int(rands[i].item() * _width))
             height.append(int(rands[i].item() * _height))
         for i in range(len(sub_batch)):
@@ -264,7 +270,7 @@ class ImageInterface(DataInterface):
             widths = [widths] * len(sub_batch)
             heights = [heights] * len(sub_batch)
         result = list(range(len(sub_batch)))
-        for i in range(len(sub_batch)):     
+        for i in range(len(sub_batch)):
             result[i] = resize(sub_batch[i][0],(widths[i], heights[i]))
         return result
 
@@ -272,19 +278,25 @@ class ImageInterface(DataInterface):
     def sub_batch_as_tensor(sub_batch: [bytes], device=torch.device('cpu')):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
+            #result[i] = frombuffer(sub_batch[i], dtype=uint8).to(torch.device(device))
             result[i] = as_tensor(sub_batch[i][0], dtype=uint8, device=torch.device(device))
         return result
 
     @staticmethod
     def decode(bytes_obj, device='cpu'):
         if torch.device('cuda').type == torch.device(device).type:
-            return torch_decode(bytes_obj)
+            im = torch_decode(frombuffer(bytes_obj[0],dtype=uint8)).to(device)
+            if len(im.shape) == 2 or im.size(0)==1:
+                if len(im.shape) == 2:
+                    im.unsqueeze_(0)
+                im = im.repeat(3,1,1)
+            return im[0:3]
         else:
-            return torch.from_numpy(np.moveaxis(jpeg_decode(bytes_obj), -1, 0))
+            return torch.from_numpy(np.moveaxis(jpeg_decode(bytes_obj[0], colorspace ='RGB',), -1, 0))
 
     @staticmethod
     def sub_batch_decode(sub_batch: [bytes], device='cpu'):
         result = list(range(len(sub_batch)))
         for i in range(len(sub_batch)):
-            result[i] = [ImageInterface.decode(sub_batch[i][0], device=device)]
+            result[i] = [ImageInterface.decode(sub_batch[i], device=device)]
         return result

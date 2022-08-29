@@ -2,10 +2,11 @@ import os
 import zipfile
 import pandas as pd
 import json
-from ..dataset import BloscDataset
+from ..dataset import BloscDataset, ImageDataset
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
 from torch import nn
+from . import benchmarker
 
 import logging, sys
 from tqdm import tqdm
@@ -59,7 +60,8 @@ class BenchmarkDataset:
         self.ann_data_path = ann_data_path
         self.img_data_path = img_data_path
 
-        annotations_csv_file = os.path.join(destination_path,f'coco2017_{mode}.csv')
+        annotations_csv_file_blosc = os.path.join(destination_path+f'_blosc/coco2017_{mode}.csv')
+        annotations_csv_file_image = os.path.join(destination_path+f'_image/coco2017_{mode}.csv')
         annotations_json_file = os.path.join(ann_data_path, f"annotations/instances_{mode}2017.json")
 
         logging.info(f"Preparing Benchmark Data in {mode} mode")
@@ -113,7 +115,7 @@ class BenchmarkDataset:
 
         logging.info('Loading Annotations')
 
-        if not os.path.isfile(annotations_csv_file):
+        if not os.path.isfile(annotations_csv_file_blosc):
             with open(annotations_json_file) as json_data:
                 data = json.load(json_data)
 
@@ -130,24 +132,43 @@ class BenchmarkDataset:
             logging.info("Finished Loading Annotations")
 
             df = pd.DataFrame(data_list)
-            df.to_csv(annotations_csv_file)
+            df.to_csv(annotations_csv_file_blosc)
+            df.to_csv(annotations_csv_file_image)
             self.df = df
             logging.info("Wrote Annotations to Disk.")
         else:
-            logging.info(f"Read Annotation from csv {annotations_csv_file}")
-            self.df = pd.read_csv(annotations_csv_file)
+            logging.info(f"Read Annotation from csv {annotations_csv_file_blosc} and {annotations_csv_file_image} ")
+            self.df = pd.read_csv(annotations_csv_file_blosc)
+            self.df = pd.read_csv(annotations_csv_file_image)
 
         logging.info("Finished preparing Benchmark Data")
 
+        path_to_metadata_function = lambda x: {'ClassFolderName':str(x).split('/')[-2]}
+
         BloscDataset.create_dataset(f'coco2017_{mode}',
                                  fr'{dataset_root}/download/coco2017_{mode}_imgs',
-                                 fr'{dataset_root}/h5',
-                                  filename_to_metadata_func=None,
+                                 fr'{dataset_root}/h5_blosc',
+                                    path_to_metadata_func= path_to_metadata_function,
                                   dataset_sub_batch_size = 100
                                   )
 
+        ImageDataset.create_dataset(f'coco2017_{mode}',
+                                    fr'{dataset_root}/download/coco2017_{mode}_imgs',
+                                    fr'{dataset_root}/h5_image',
+                                    path_to_metadata_func = path_to_metadata_function,
+                                    dataset_sub_batch_size = 100
+                                    )
+
         self.h5_transform = nn.Sequential(transforms.Resize(crop_size))
-        self.h5dataset = BloscDataset(f'coco2017_{mode}', fr'{dataset_root}/h5', tr_crop_strategy='random', tr_crop_size=crop_ratio, tr_crop_area_ratio_range=crop_area, tensor_transforms=self.h5_transform)
+
+
+        self.blosc_h5dataset = BloscDataset(f'coco2017_{mode}', fr'{dataset_root}/h5_blosc', tr_crop_strategy='random', tr_crop_size=crop_ratio, tr_crop_area_ratio_range=crop_area, tensor_transforms=self.h5_transform)
+        self.image_h5dataset = ImageDataset(f'coco2017_{mode}', fr'{dataset_root}/h5_image',
+                                            tr_crop_strategy='random',
+                                            tr_crop_size=crop_ratio,
+                                            tr_crop_area_ratio_range=crop_area,
+                                            tr_output_size=crop_size,
+                                            decode='cuda')
 
 
         self.im_folder_transforms = transforms.Compose([

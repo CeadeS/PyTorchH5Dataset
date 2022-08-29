@@ -61,7 +61,7 @@ class Benchmarker(object):
 
 
     def decorate_iterator_class(_self, _iterator):
-        class Iterator(object):
+        class Iterator:
             def __init__(self, *args, **kwargs):
                 self._iterator = _iterator(*args, **kwargs)
                 self.iterator = None ## ugly TODO find a correct way
@@ -107,3 +107,11 @@ class Benchmarker(object):
         self.proc = psutil.Process()
         self.reset_benchmarker()
         self.__stats = []
+        self.iterator = None
+
+    def __call__(self, iterable):
+        for obj in iterable:
+            yield obj
+            self.record_stats()
+
+

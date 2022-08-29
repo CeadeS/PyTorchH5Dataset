@@ -19,6 +19,7 @@ import h5py  # fixes plugins not found Exceptions
 import numpy as np
 import pandas as pd
 from jpegtran import lib
+
 from simplejpeg import decode_jpeg as jpeg_decode
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -29,6 +30,17 @@ from ..fn.image import ImageInterface
 from tar_dir_indexer.tarDirIndexer import TarDirIndexer
 
 logging.info(f"hdf5plugin version == {hdf5plugin._version.version}")
+
+def time_left_str(seconds):
+    ##from https://www.adamsmith.haus/python/answers/how-to-convert-seconds-to-days,-hours,-and-minutes-in-python#:~:text=Use subtraction and floor division,each result in a variable.
+    seconds_in_day = 60 * 60 * 24
+    seconds_in_hour = 60 * 60
+    seconds_in_minute = 60
+    days = seconds // seconds_in_day
+    hours = (seconds - (days * seconds_in_day)) // seconds_in_hour
+    minutes = (seconds - (days * seconds_in_day) - (hours * seconds_in_hour)) // seconds_in_minute
+    seconds = seconds - days * seconds_in_day - hours * seconds_in_hour - minutes * seconds_in_minute
+    return f"Time Left: {int(days):3d} days, {int(hours):2d} hours, {int(minutes):2d} minutes, and {int(seconds):3d} seconds  "
 
 class H5MetaDataset(Dataset, ABC):
 
@@ -43,16 +55,19 @@ class H5MetaDataset(Dataset, ABC):
                                          sub_batch_size=1, max_n_group=int(1e5),
                                          shuffle_indexes=False):
         from time import time
+
         n_batches = ceil(n_samples / sub_batch_size)
-        meta_cls = np.zeros((n_batches, sub_batch_size, 1), dtype=np.uint16)
+        meta_cls = np.zeros((n_batches, sub_batch_size, 1), dtype=np.int32)
         meta_shapes = np.zeros((n_batches, sub_batch_size, 2), dtype=np.uint16)
-        meta_indexes = np.zeros((n_batches, sub_batch_size, 1), dtype=np.uint16)
+        meta_indexes = np.zeros((n_batches, sub_batch_size, 1), dtype=np.int64)
         meta_max_shapes = np.zeros((n_batches, sub_batch_size, 2), dtype=np.uint16)
         indexes = list(range(n_samples))
         if shuffle_indexes:
             shuffle(indexes)
         idx = 0
         t0 = time()
+        iter_p_sec = -1
+
         with h5py.File(h5_file_name, "w", fs_strategy='fsm', fs_persist='ALL', fs_threshold=1) as h5_file:
             for tar_dict in tar_files_contents_lists:
                 tar_file_name, tar_contents = tar_dict['tar_file'], tar_dict['contents']
@@ -95,9 +110,12 @@ class H5MetaDataset(Dataset, ABC):
                         meta_indexes[batch_index, sub_batch_key] = index
                         meta_max_shapes[batch_index, sub_batch_key] = shape
                         idx = idx + 1
-                        iter_p_sec = 1 / (time() - t0) * 1000.
+                        if iter_p_sec == -1:
+                            iter_p_sec = 1 / (time() - t0)
+                        else:
+                            iter_p_sec = 0.001 * (1 / (time() - t0)) + 0.999 * iter_p_sec
                         print(
-                            f"\r{int(idx):7d} of {n_samples:7d} written {iter_p_sec} iter/s {n_samples / iter_p_sec} sec left",
+                            f"\r{int(idx):7d} of {n_samples:7d} written {iter_p_sec:4.2f} iter/s {time_left_str(int((n_samples - idx) / iter_p_sec))}",
                             end='')
                         t0 = time()
                         if idx % 1000 == 0:
@@ -110,26 +128,37 @@ class H5MetaDataset(Dataset, ABC):
     def tar_dir_to_hdf5_dataset(tar_root_in_dir='ILSVRC2012_img_train',
                                 root_hdf5_out_dir='ILSVRC2012_img_train_h5',
                                 dataset_name='imagenet_meta', shuffle_tar_data=False, sub_batch_size=1,
-                                max_n_group=int(1e5)):
+                                max_n_group=int(1e5), lower_file_count_limit=0):
 
         tar_files_list = os.listdir(tar_root_in_dir)
+        Path(root_hdf5_out_dir).mkdir(parents=True, exist_ok=True)
         tar_files_contents_list = []
         classes = []
         index = 0
         all_contents = []
 
-        for cl, tar_file_name in enumerate(tar_files_list):
-            classes.append((cl, tar_file_name))
+        cl = 0
+        for tar_file_name in tqdm(tar_files_list, total=len(tar_files_list)):
+
             file = os.path.join(tar_root_in_dir, tar_file_name)
             tar_file_contents = {'tar_file': tar_file_name, 'contents': []}
+
             if tarfile.is_tarfile(file):
                 with tarfile.open(file, "r") as tf:
                     nnames = tf.getnames()
+                    if lower_file_count_limit > 0 and len(nnames) < lower_file_count_limit:
+                        print(f'Skipping {file} with only {len(nnames)} samples')
+                        logging.info(f'Skipping {file} with only {len(nnames)} samples')
+                        continue
                     tar_file_contents['contents'].extend(
                         ((n, tar_file_name[:-4], cl, index + i, 'jpeg') for i, n in enumerate(nnames)))
                     all_contents.extend(((n, tar_file_name[:-4], cl, index + i, 'jpeg') for i, n in enumerate(nnames)))
                     index = index + len(nnames)
+            classes.append((cl, tar_file_name))
+            cl = cl+1
             tar_files_contents_list.append(tar_file_contents)
+
+
 
         h5_file_name = f"{os.path.join(root_hdf5_out_dir, dataset_name)}.h5"
 
@@ -169,10 +198,36 @@ class H5MetaDataset(Dataset, ABC):
 
 
     @staticmethod
+    def get_class_mappings(tar_dir_index, path_to_metadata_function, test=False):
+        for node in tar_dir_index.index:
+            node.meta = path_to_metadata_function(str(node.get_path()))
+            if test:
+                print(node.meta)
+
+        classes = []
+        for node in tar_dir_index.index:
+            classes.append(node.meta['ClassFolderName'])
+
+
+        classes = sorted(list(set(classes)))
+        if test:
+            print(classes)
+        classes_mapping = dict((classname, classidx) for classidx, classname in enumerate(classes))
+        if test:
+            print(classes_mapping)
+            raise Exception('Test Finished')
+
+        for node in tar_dir_index.index:
+            node.meta['ClassNo'] = classes_mapping[node.meta['ClassFolderName']]
+
+        return classes_mapping
+
+
+    @staticmethod
     @final
     def _convert_tar_dir_to_dataset(data_root, path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[0]},
                                     dataset_destination='./data', dataset_name = 'test_dataset',
-                                    sub_batch_size=50, data_mode='blosc', max_n_group=10):
+                                    sub_batch_size=50, data_mode='blosc', max_n_group=10, test = False):
         from pathlib import Path
         """
         Read all samples from the FilePath read from each row of a pandas dataframe and add them to a h5 dataset file.
@@ -194,24 +249,14 @@ class H5MetaDataset(Dataset, ABC):
         data_interface = BloscInterface if data_mode == 'blosc' else ImageInterface
 
         tar_dir_index = TarDirIndexer(data_root)
-        for node in tar_dir_index.index:
-            node.meta = path_to_metadata_function(str(node.get_path()))
-
-        classes = []
-        for node in tar_dir_index.index:
-            classes.append(node.meta['ClassFolderName'])
-
-
-        classes = sorted(list(set(classes)))
-        classes_mapping = dict((classname, classidx) for classidx, classname in enumerate(classes))
-
-        for node in tar_dir_index.index:
-            node.meta['ClassNo'] = classes_mapping[node.meta['ClassFolderName']]
+        H5MetaDataset.get_class_mappings(tar_dir_index, path_to_metadata_function, test)
 
         sample_data_list = []
         meta_entry_dict_list = []
         if data_mode == 'blosc':
             tar_dir_index.get_shapes()
+        else:
+            shuffle(tar_dir_index.index)
         for idx, node in enumerate(tqdm(tar_dir_index.index, desc="Extracting meta data")):
 
             if data_mode == 'blosc':
@@ -240,6 +285,7 @@ class H5MetaDataset(Dataset, ABC):
             meta_entry_dict.update(node.meta)
             meta_entry_dict_list.append(meta_entry_dict)
             sample_data_list.append(sample)
+
 
         dataframe = pd.DataFrame(meta_entry_dict_list)
 
@@ -428,6 +474,7 @@ class H5MetaDataset(Dataset, ABC):
             h5_file.attrs['data_dtype'] = str(data_dtype)
             h5_file.attrs['sub_batch_size'] = int(sub_batch_size)
 
+
     @staticmethod
     @final
     def create_metadata_for_jpeg_dataset(raw_files_dir, filename_to_metadata_func=None, no_classes=False):
@@ -443,7 +490,9 @@ class H5MetaDataset(Dataset, ABC):
         datalist = []
         classes = sorted(os.listdir(raw_files_dir))
 
-        total = 120434672
+        total = 0
+        for root, dirs, files in os.walk(raw_files_dir):
+            total += len(files)
 
         if not no_classes:
             for cl in classes:
@@ -496,7 +545,8 @@ class H5MetaDataset(Dataset, ABC):
 
     @final
     def __len__(self):
-        return self.max_idx + 1
+        return len(self.group_number_mapping)
+        #return self.max_idx + 1
 
     def __getitem__(self, sub_batch_idx):
         """
@@ -515,21 +565,45 @@ class H5MetaDataset(Dataset, ABC):
         if self.h5_file is None:
             self.h5_file = h5py.File(self.dataset_h5_file_path, "r")
 
-        sub_batch_idx = self.group_number_mapping[sub_batch_idx]
-        group_no = str(sub_batch_idx // self.max_n_group)
-        dataset_no = str(sub_batch_idx % self.max_n_group)
+        try: ## index == 0 hotfix
+            sub_batch_idx = self.group_number_mapping[sub_batch_idx]
+            group_no = str(sub_batch_idx // self.max_n_group)
+            dataset_no = str(sub_batch_idx % self.max_n_group)
 
-        sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
+            sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
 
-        meta_data = (self.classes[sub_batch_idx],
-                     self.indices[sub_batch_idx])
+            meta_data = (self.classes[sub_batch_idx],
+                         self.indices[sub_batch_idx])
 
-        if sub_batch_slice is not None:
-            sub_batch, meta_data = sub_batch[sub_batch_slice].squeeze(), \
-                                   (np.array(meta_data[0])[sub_batch_slice].squeeze(),
-                                    np.array(meta_data[1])[sub_batch_slice].squeeze())
+            if sub_batch_slice is not None:
+                sub_batch, meta_data = sub_batch[sub_batch_slice].squeeze(), \
+                                       (np.array(meta_data[0])[sub_batch_slice].squeeze(),
+                                        np.array(meta_data[1])[sub_batch_slice].squeeze())
 
-        return sub_batch, np.array(meta_data)
+            return sub_batch, np.array(meta_data)
+        except:
+            sub_batch_idx
+            sub_batch_idx = self.group_number_mapping[sub_batch_idx]
+            group_no = str(sub_batch_idx // self.max_n_group)
+            dataset_no = str(sub_batch_idx % self.max_n_group)
+
+            sub_batch = self.h5_file[group_no][f'samples/{dataset_no}']
+
+            meta_data = (self.classes[sub_batch_idx],
+                         self.indices[sub_batch_idx])
+
+            if sub_batch_slice is not None:
+                sub_batch, meta_data = sub_batch[sub_batch_slice].squeeze(), \
+                                       (np.array(meta_data[0])[sub_batch_slice].squeeze(),
+                                        np.array(meta_data[1])[sub_batch_slice].squeeze())
+
+            return sub_batch, np.array(meta_data)
+
+
+    def reset(self):
+        if self.h5_file is not None:
+            self.h5_file.close()
+            self.h5_file = h5py.File(self.dataset_h5_file_path, "r")
 
     @final
     def get_meta_data_from_indices(self, indices):
@@ -547,10 +621,10 @@ class H5MetaDataset(Dataset, ABC):
                        dataset_source_root_files_dir,
                        dataset_dest_root_dir,
                        dataset_sub_batch_size=50,
-                       filename_to_metadata_func=lambda s: (zip(('name', 'type'), s.split('.'))),
+                       path_to_metadata_func=lambda x: {'ClassFolderName':str(x).split('/')[0]},
                        overwrite_existing=False,
-                       no_class_dirs=False,
-                       data_mode='blosc'
+                       data_mode=None,
+                       max_n_group = 10,
                        ):
         """
         Creates a dataset files names dataset_name.<h5/csv>
@@ -558,13 +632,17 @@ class H5MetaDataset(Dataset, ABC):
         :param dataset_source_root_files_dir: Data should be stored in this directory. Should have sub directories for the classes.
         :param dataset_dest_root_dir: Destination for h5 and csv file. If csv file is already existing process is resumed with existing file unless overwrite is set true.
         :param dataset_sub_batch_size: Number of Samples padded and batched together. The smaller the number the slower the loading and vice versa.
-        :param filename_to_metadata_func: Function that extracts meta data from samples names.
+        :param path_to_metadata_func: Function that extracts meta data from samples names.
         :param overwrite_existing: If true, meta data and existing h5 are overwritten. If not meta is reused.
         :param no_class_dirs: Classes are provided in subdirs in dataset_source_files_dir or not.
         :param data_mode: str. either 'blosc' (lossless multi channel) or 'image' (jpeg)
         :return:
         """
         ## TODO add progress Bar
+        if data_mode is None:
+            data_mode = 'blosc' if str(cls).split('.')[-1][:-2] == 'BloscDataset' else 'image'
+            print(f"Creating {data_mode} dataset")
+
         assert os.path.exists(dataset_source_root_files_dir), "Raw data root directory not found."
 
         # assert overwrite_existing or not os.path.exists(dataset_dest_root_dir), \
@@ -580,27 +658,34 @@ class H5MetaDataset(Dataset, ABC):
 
         dataset_h5_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.h5')
         metadata_file_path = os.path.join(dataset_dest_root_dir, dataset_name + '.csv')
+        print(os.listdir())
 
         if not os.path.exists(metadata_file_path) or overwrite_existing:
+            print(metadata_file_path)
             logging.info('Creating meta data file.')
-            metadata = H5MetaDataset.create_metadata_for_jpeg_dataset(dataset_source_root_files_dir,
-                                                                      filename_to_metadata_func, no_class_dirs)
-            metadata.to_csv(metadata_file_path)
-            logging.info("Finished creating meta data file.")
+            H5MetaDataset._convert_tar_dir_to_dataset(dataset_source_root_files_dir,
+                                                     path_to_metadata_function=path_to_metadata_func,
+                                                     dataset_destination=dataset_dest_root_dir,
+                                                     dataset_name = dataset_name,
+                                                     sub_batch_size=dataset_sub_batch_size,
+                                                     data_mode=data_mode,
+                                                     max_n_group=max_n_group
+                                                      )
+            logging.info("Finished creating dataset.")
+            return
         else:
             metadata = pd.read_csv(metadata_file_path)
             logging.info("Meta data file found. Proceeding")
-
-        if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
-            logging.info('Converting raw data files to h5.')
-            H5MetaDataset._convert_samples_to_dataset(dataset_dataframe=metadata,
-                                                      dataset_destination_h5_file=dataset_h5_file_path,
-                                                      sub_batch_size=dataset_sub_batch_size, data_mode=data_mode)
-            logging.info('Finished converting Files')
+            if not os.path.exists(dataset_h5_file_path) or overwrite_existing:
+                logging.info('Converting raw data files to h5.')
+                H5MetaDataset._convert_samples_to_dataset(dataset_dataframe=metadata,
+                                                          dataset_destination_h5_file=dataset_h5_file_path,
+                                                          sub_batch_size=dataset_sub_batch_size, data_mode=data_mode)
+                logging.info('Finished converting Files')
 
     @final
     def get_group_number_mapping(self):
-        sample_index = list(range(len(self)))
+        sample_index = list(range(self.max_idx + 1))
         if self.split_mode == 'montecarlo':  ## select random subset
             random.Random(self.split_number).shuffle(sample_index)
             split_size = int(self.split_ratio * len(sample_index))
@@ -609,8 +694,10 @@ class H5MetaDataset(Dataset, ABC):
             split_size = int(self.split_ratio * len(sample_index))
             selected_samples_index_map = sample_index[:split_size]
         elif self.split_mode in ['split', 'cross_val']:
-            split_begin = round(sum(self.split_ratio[0:self.split_number]) * len(sample_index))
-            split_end = round((1 - sum(self.split_ratio[self.split_number + 1:])) * len(sample_index))
+            from math import floor
+            split_begin = floor(sum(self.split_ratio[0:self.split_number]) * len(sample_index))
+            split_end = floor(sum(self.split_ratio[0:self.split_number + 1]) * len(sample_index))
+            #split_end = floor((1 - sum(self.split_ratio[self.split_number + 1:])) * len(sample_index))
             selected_samples_index_map = sample_index[split_begin:split_end]
         else:
             raise ValueError(f"{self.split_mode} not supported")
