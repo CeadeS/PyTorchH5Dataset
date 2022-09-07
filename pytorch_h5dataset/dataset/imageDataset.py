@@ -20,7 +20,7 @@ class ImageDataset(H5MetaDataset):
                 if isinstance(sample, list):
                     sample = [self.tensor_transforms(s) for s in sample]
                 else:
-                    sample = self.tensor_transforms(sample)
+                    sample = stack([self.tensor_transforms(s) for s in sample])
 
             return sample, meta
         except:
@@ -32,7 +32,7 @@ class ImageDataset(H5MetaDataset):
                 if isinstance(sample, list):
                     sample = [self.tensor_transforms(s) for s in sample]
                 else:
-                    sample = self.tensor_transforms(sample)
+                    sample = stack([self.tensor_transforms(s) for s in sample])
 
             return sample, meta
 

@@ -973,11 +973,10 @@ class TestH5Dataset(TestCase):
 
         del dataset
 
-        _H5Dataset._new_convert_samples_to_dataset('test/data/images/rgb',
+        imageDataset.ImageDataset.convert_tar_dir_to_dataset('test/data/images/rgb',
                                                path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[4]},
                                                dataset_destination='./test/data/tmp/dataset/h5/',
                                                dataset_name='test_dataset_image',
-                                               data_mode='image',
                                                sub_batch_size=1)
 
         sh.copy('./test/data/test_dataset.csv','./test/data/tmp/dataset/h5/test_dataset_image.csv')
@@ -991,7 +990,7 @@ class TestH5Dataset(TestCase):
         self.assertEqual(cl.item(), 0)
         del dataset
 
-        _H5Dataset._new_convert_samples_to_dataset('test/data/images/rgb',
+        _H5Dataset.ImageDataset.convert_tar_dir_to_dataset('test/data/images/rgb',
                                                    path_to_metadata_function=lambda x: {'ClassFolderName':str(x).split('/')[4]},
                                                    dataset_destination='./test/data/tmp/dataset/h5/',
                                                    dataset_name='test_dataset_image',

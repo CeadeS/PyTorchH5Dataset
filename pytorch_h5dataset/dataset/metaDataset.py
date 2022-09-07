@@ -612,7 +612,8 @@ class H5MetaDataset(Dataset, ABC):
         :param indices:
         :return:
         """
-        return self.metadata[self.metadata['Index'].isin(np.asarray(indices, dtype=np.int64))]
+        return self.metadata.iloc[pd.Index(self.metadata['Index']).get_indexer(np.asarray(indices, dtype=np.int64))]
+        #return self.metadata[self.metadata['Index'].isin(np.asarray(indices, dtype=np.int64))]
 
     @classmethod
     @final
