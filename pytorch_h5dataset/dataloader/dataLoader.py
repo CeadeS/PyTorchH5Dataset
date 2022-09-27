@@ -65,7 +65,7 @@ class DataLoader(object):
                  batch_sampler=None, num_workers=0, collate_fn=None,
                  pin_memory=False, drop_last=False, timeout=0,
                  worker_init_fn=None, multiprocessing_context='fork', normalize=None,
-                 return_meta_indices = True, meta_filter=None, persistent_workers=True):
+                 return_meta_indices = True, meta_filter=None, persistent_workers=True, unsupervised=False):
         self.num_workers = num_workers
         if self.num_workers == 0:
             multiprocessing_context = None
@@ -82,7 +82,8 @@ class DataLoader(object):
         self.shuffle = shuffle
         assert meta_filter in [None, 'indices', 'labels']
         self.meta_filter = meta_filter
-        self.dataloader = data.DataLoader(dataset, batch_size=batch_size*num_batches_buffered, shuffle=self.shuffle, sampler=sampler,
+        self.unsupervised = unsupervised
+        self.dataloader = data.DataLoader(dataset, batch_size=int(batch_size*num_batches_buffered), shuffle=self.shuffle, sampler=sampler,
                                      batch_sampler=batch_sampler, num_workers=self.num_workers, collate_fn=self.collate_fn,
                                      pin_memory=self.pin_memory, drop_last=drop_last, timeout=timeout,
                                      worker_init_fn=worker_init_fn, multiprocessing_context=multiprocessing_context,
@@ -94,7 +95,6 @@ class DataLoader(object):
                 sample = sample.pin_memory().to(self.device)
             meta = as_tensor(meta_class, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
             meta_indices = as_tensor(meta_indices, dtype=int64, device=self.device).view(-1)#.requires_grad_(True)
-
             if self.shuffle:
                 perm = randperm(len(sample))
             else:
@@ -111,23 +111,28 @@ class DataLoader(object):
                     if len(rand_batch_indexes) == 1:
                         x =  np.expand_dims(x, axis=0)
                     x = as_tensor(x, device=self.device)
-                y = meta[rand_batch_indexes]
+
                 if self.normalize is not None:
                     if isinstance(x, tuple):
                         x = [self.normalize(_x) for _x in x]
                     else:
                         x = self.normalize(x)
-                if len(x.shape) != 4:
+
+                if isinstance(x, Tensor) and len(x.shape) != 4:
                     continue
-                if self.meta_filter is not None:
-                    if self.meta_filter == 'labels':
-                        yield x, y
-                    else:
-                        yield x, meta_indices[rand_batch_indexes]
-                if self.return_meta_indices:
-                    yield x,(y, meta_indices[rand_batch_indexes])
+                if self.unsupervised:
+                    yield x, None
                 else:
-                    yield x,(y, self.dataset.get_meta_data_from_indices(np.asarray(meta_indices[rand_batch_indexes].cpu())))
+                    y = meta[rand_batch_indexes]
+                    if self.meta_filter is not None:
+                        if self.meta_filter == 'labels':
+                            yield x, y
+                        else:
+                            yield x, meta_indices[rand_batch_indexes]
+                    if self.return_meta_indices:
+                        yield x,(y, meta_indices[rand_batch_indexes])
+                    else:
+                        yield x,(y, self.dataset.get_meta_data_from_indices(np.asarray(meta_indices[rand_batch_indexes].cpu())))
 
     def __len__(self):
         return ceil(self.dataset.num_samples / self.batch_size)

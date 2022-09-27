@@ -335,6 +335,7 @@ class H5MetaDataset(Dataset, ABC):
                     shapes_list.append(__shapes)
                     indices_list.append(np.array(indices, dtype=np.dtype('int64')))
                     batch_shapes_list.append(__shapes.max(axis=1))
+                    print(__shapes.max(axis=1))
                     num_samples += len(batch)
                 data_dtype = str(bytes)
 

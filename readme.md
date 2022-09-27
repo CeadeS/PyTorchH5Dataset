@@ -34,12 +34,10 @@ pip install
 pip install pytorch-h5dataset
 ```
 
-dev intall
+dev install
 ```bash
 
-git clone https://github.com/CeadeS/PyTorchH5Dataset.git
-cd PyTorchH5Dataset
-pip install -e .
+pip install -e git+https://github.com/CeadeS/PyTorchH5Dataset.git@dev#egg=pytorch-h5dataset
 ```
 
 

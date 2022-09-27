@@ -12,17 +12,22 @@ class ImageDataset(H5MetaDataset):
 
 
     def __getitem__(self, sub_batch_idx):
+        sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
+        sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
+
+        if self.tensor_transforms is not None:
+            if isinstance(sample, list):
+                res = []
+                for s in sample:
+                    for ss in s:
+                        res.extend(self.tensor_transforms(ss))
+                sample = stack(res)
+            else:
+                sample = stack([self.tensor_transforms(s) for s in sample])
+
+        return sample, meta
         try:
-            sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
-            sample = self.image_transforms(sample_reference[()]) ##  [read sample from disk] and transform
-
-            if self.tensor_transforms is not None:
-                if isinstance(sample, list):
-                    sample = [self.tensor_transforms(s) for s in sample]
-                else:
-                    sample = stack([self.tensor_transforms(s) for s in sample])
-
-            return sample, meta
+            pass
         except:
             sub_batch_idx = 0
             sample_reference, meta = super(ImageDataset, self).__getitem__(sub_batch_idx=sub_batch_idx)
@@ -30,7 +35,11 @@ class ImageDataset(H5MetaDataset):
 
             if self.tensor_transforms is not None:
                 if isinstance(sample, list):
-                    sample = [self.tensor_transforms(s) for s in sample]
+                    res = []
+                    for s in sample:
+                        for ss in s:
+                            res.append(self.tensor_transforms(ss))
+                    sample = stack(res)
                 else:
                     sample = stack([self.tensor_transforms(s) for s in sample])
 
